@@ -7,6 +7,8 @@ import { InteractiveHoverButton } from '@/registry/magicui/interactive-hover-but
 import { ElasticSlider } from './ElasticSlider';
 import { SpotifyPlayerModal } from './SpotifyPlayerModal';
 
+import { playRhythmPulse, unlockAudio } from '@/lib/audioEngine';
+
 interface SoundboardSectionProps {
   onOpenPlaylistPage?: () => void;
 }
@@ -22,7 +24,6 @@ export const SoundboardSection: React.FC<SoundboardSectionProps> = ({ onOpenPlay
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [playbackTime, setPlaybackTime] = useState<number>(0);
 
-  const audioCtxRef = useRef<AudioContext | null>(null);
   const intervalRef = useRef<any>(null);
   const timerRef = useRef<any>(null);
   const volumeRef = useRef<number>(70);
@@ -31,58 +32,7 @@ export const SoundboardSection: React.FC<SoundboardSectionProps> = ({ onOpenPlay
     volumeRef.current = volume;
   }, [volume]);
 
-  // Helper to ensure AudioContext is unlocked for iOS Safari
-  const getOrCreateAudioContext = (): AudioContext | null => {
-    try {
-      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        audioCtxRef.current = new AudioCtx();
-      }
-      const ctx = audioCtxRef.current;
-      if (ctx.state === 'suspended') {
-        ctx.resume();
-      }
-      // Instant silent buffer play to unlock iOS audio engine hardware
-      const buffer = ctx.createBuffer(1, 1, 22050);
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(ctx.destination);
-      source.start(0);
-      return ctx;
-    } catch (e) {
-      console.warn('AudioContext init error:', e);
-      return null;
-    }
-  };
-
-  const playBeatSound = (ctx: AudioContext, freq: number) => {
-    try {
-      if (ctx.state === 'suspended') {
-        ctx.resume();
-      }
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      const currentVol = Math.max(0.01, (volumeRef.current / 100) * 0.45);
-
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(freq, now);
-      osc.frequency.exponentialRampToValueAtTime(freq * 1.5, now + 0.12);
-
-      gain.gain.setValueAtTime(currentVol, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.25);
-    } catch (err) {
-      console.warn('Oscillator error:', err);
-    }
-  };
-
-  // Web Audio API playback
+  // Web Audio playback
   const togglePlayTrack = (track: RhythmTrack) => {
     if (activeTrack?.id === track.id && isPlaying) {
       stopAudio();
@@ -90,26 +40,22 @@ export const SoundboardSection: React.FC<SoundboardSectionProps> = ({ onOpenPlay
     }
 
     stopAudio();
+    unlockAudio();
     setActiveTrack(track);
     setIsPlaying(true);
     setPlaybackTime(0);
 
-    const ctx = getOrCreateAudioContext();
-    if (!ctx) return;
-
-    // Play first beat immediately on user click
+    // Play first beat immediately on user click/tap
     if (track.pattern[0] === 1) {
-      playBeatSound(ctx, track.freq);
+      playRhythmPulse(track.freq, volumeRef.current);
     }
 
     let step = 1;
     intervalRef.current = setInterval(() => {
-      if (!audioCtxRef.current) return;
-      const activeCtx = audioCtxRef.current;
       const isBeat = track.pattern[step % track.pattern.length] === 1;
 
       if (isBeat) {
-        playBeatSound(activeCtx, track.freq);
+        playRhythmPulse(track.freq, volumeRef.current);
       }
 
       step++;
@@ -128,12 +74,6 @@ export const SoundboardSection: React.FC<SoundboardSectionProps> = ({ onOpenPlay
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
-    }
-    if (audioCtxRef.current) {
-      try {
-        audioCtxRef.current.close();
-      } catch {}
-      audioCtxRef.current = null;
     }
     setIsPlaying(false);
   };

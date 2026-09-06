@@ -46,31 +46,32 @@ export const LogoLoop: React.FC<LogoLoopProps> = ({
   const gapStyle = typeof gap === 'number' ? `${gap}px` : gap;
   const heightStyle = typeof logoHeight === 'number' ? `${logoHeight}px` : logoHeight;
 
-  // Duplicate items 6 times to ensure seamless infinite looping on any screen size
-  const repeatedLogos = [...logos, ...logos, ...logos, ...logos, ...logos, ...logos];
+  // Duplicate items 4 times to ensure seamless infinite looping on any screen size
+  const repeatedLogos = [...logos, ...logos, ...logos, ...logos];
 
   const renderLogo = (item: LogoItem, idx: number) => {
     const logoElement = (
       <div
-        className={`flex items-center justify-center transition-all duration-500 ease-out filter drop-shadow-[0_2px_12px_rgba(0,0,0,0.7)] ${
+        className={`flex items-center justify-center transition-all duration-300 ease-out ${
           grayscale
-            ? 'grayscale opacity-50 contrast-125 group-hover:grayscale-0 group-hover:opacity-100 group-hover:contrast-100'
-            : 'opacity-90 group-hover:opacity-100'
+            ? 'grayscale opacity-60 contrast-110 hover:grayscale-0 hover:opacity-100 hover:contrast-100'
+            : 'opacity-90 hover:opacity-100'
         } ${
-          scaleOnHover ? 'group-hover:scale-110 group-hover:drop-shadow-[0_4px_20px_rgba(238,220,154,0.35)]' : ''
+          scaleOnHover ? 'hover:scale-110 hover:drop-shadow-[0_4px_16px_rgba(238,220,154,0.35)]' : ''
         } ${item.className || ''}`}
         style={{ height: heightStyle }}
       >
         {item.node ? (
-          <div className="flex items-center justify-center text-3xl md:text-4xl text-neutral-400 group-hover:text-[#EEDC9A] transition-colors duration-500">
+          <div className="flex items-center justify-center text-3xl md:text-4xl text-neutral-400 hover:text-[#EEDC9A] transition-colors duration-300">
             {item.node}
           </div>
         ) : (
           <img
             src={item.src}
             alt={item.alt || item.title || 'Parceiro'}
-            className="max-h-full max-w-[180px] sm:max-w-[220px] object-contain select-none pointer-events-none transition-all duration-500 ease-out"
+            className="max-h-full max-w-[170px] sm:max-w-[210px] object-contain select-none pointer-events-none transition-all duration-300"
             loading="lazy"
+            decoding="async"
           />
         )}
       </div>
@@ -84,7 +85,7 @@ export const LogoLoop: React.FC<LogoLoopProps> = ({
           target="_blank"
           rel="noopener noreferrer"
           title={item.title || item.alt}
-          className="group inline-flex items-center justify-center shrink-0 cursor-pointer px-3 py-2 transition-all duration-500"
+          className="group inline-flex items-center justify-center shrink-0 cursor-pointer px-3 py-2 transition-transform duration-300"
         >
           {logoElement}
         </a>
@@ -94,7 +95,7 @@ export const LogoLoop: React.FC<LogoLoopProps> = ({
     return (
       <div
         key={`logo-item-${idx}`}
-        className="group inline-flex items-center justify-center shrink-0 px-3 py-2 transition-all duration-500"
+        className="group inline-flex items-center justify-center shrink-0 px-3 py-2 transition-transform duration-300"
       >
         {logoElement}
       </div>
@@ -153,10 +154,10 @@ export const LogoLoop: React.FC<LogoLoopProps> = ({
       <style>{`
         @keyframes logo-loop-horizontal {
           0% {
-            transform: translateX(0);
+            transform: translate3d(0, 0, 0);
           }
           100% {
-            transform: translateX(-50%);
+            transform: translate3d(-50%, 0, 0);
           }
         }
 
@@ -165,6 +166,10 @@ export const LogoLoop: React.FC<LogoLoopProps> = ({
           animation-timing-function: linear;
           animation-iteration-count: infinite;
           will-change: transform;
+          transform: translate3d(0, 0, 0);
+          -webkit-transform: translate3d(0, 0, 0);
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
         }
 
         ${

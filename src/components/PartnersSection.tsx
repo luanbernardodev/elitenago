@@ -47,14 +47,14 @@ export const PartnersSection: React.FC = () => {
         </ScrollFloat>
       </div>
 
-      {/* Seamless Logo Loop with generous spacing */}
+      {/* Seamless Logo Loop with generous spacing and fluid speed */}
       <div className="w-full">
         <LogoLoop
           logos={PARTNER_LOGOS}
-          speed={60}
+          speed={18}
           direction="left"
           logoHeight={58}
-          gap={100}
+          gap={72}
           pauseOnHover={true}
           scaleOnHover={true}
           fadeOut={true}
