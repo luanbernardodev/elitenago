@@ -4,10 +4,8 @@ import { Calendar, ArrowRight, X, ShieldCheck, Share2, Check } from 'lucide-reac
 import { NewsItem } from '../types';
 import { ALL_NEWS } from '../data/newsData';
 import { ScrollFloat } from './ScrollFloat';
-import { BorderGlow } from './BorderGlow';
 import { BentoGrid, BentoGridItem } from './ui/bento-grid';
 import { InteractiveHoverButton } from '@/registry/magicui/interactive-hover-button';
-import { StarBorder } from './ui/StarBorder';
 
 interface NewsSectionProps {
   onOpenNewsPage?: () => void;
@@ -100,8 +98,8 @@ export const NewsSection: React.FC<NewsSectionProps> = ({ onOpenNewsPage }) => {
         </ScrollFloat>
       </div>
 
-      {/* Bento Grid News Layout */}
-      <BentoGrid className="max-w-7xl mx-auto gap-6 sm:gap-8">
+      {/* Bento Grid News Layout - Optimized with High-Performance Glass Cards */}
+      <BentoGrid className="max-w-7xl mx-auto gap-5 sm:gap-7">
         {latestNews.map((item, index) => {
           // Bento layout pattern: Item 0 is 2 cols, Item 1 is 1 col, Item 2 is 1 col, Item 3 is 2 cols
           const isWide = index === 0 || index === 3;
@@ -112,27 +110,13 @@ export const NewsSection: React.FC<NewsSectionProps> = ({ onOpenNewsPage }) => {
               className={isWide ? 'md:col-span-2' : 'md:col-span-1'}
               onClick={() => setSelectedNews(item)}
             >
-              <BorderGlow
-                borderRadius={24}
-                glowColor="45 50 65"
-                backgroundColor="#08080a"
-                colors={['#F6E7B8', '#EED89F', '#E3C887']}
-                className="p-6 sm:p-8 h-full flex flex-col justify-between group hover:shadow-2xl transition-all duration-300"
-              >
+              <div className="p-6 sm:p-8 h-full flex flex-col justify-between group rounded-3xl border border-white/10 bg-neutral-950/80 hover:bg-neutral-900/90 hover:border-[#EEDC9A]/40 transition-all duration-300 shadow-xl hover:shadow-[0_10px_30px_rgba(0,0,0,0.8)] cursor-pointer">
                 <div>
                   {/* Badge & Date */}
                   <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 mb-4">
-                    <StarBorder
-                      as="div"
-                      color="#EEDC9A"
-                      speed="4s"
-                      thickness={1}
-                      backgroundColor="rgba(20, 20, 25, 0.85)"
-                      borderColor="rgba(238, 220, 154, 0.3)"
-                      innerClassName="px-3 py-1 text-[10px] sm:text-[11px] font-syne font-bold uppercase tracking-wider text-amber-200 shadow-sm"
-                    >
+                    <span className="px-3 py-1 text-[10px] sm:text-[11px] font-syne font-bold uppercase tracking-wider text-[#EEDC9A] bg-[#EEDC9A]/10 border border-[#EEDC9A]/30 rounded-full shadow-sm">
                       {item.tag}
-                    </StarBorder>
+                    </span>
 
                     <div className="flex items-center gap-1.5 text-xs text-neutral-400 font-light">
                       <Calendar className="w-3.5 h-3.5 text-neutral-500" />
@@ -178,12 +162,12 @@ export const NewsSection: React.FC<NewsSectionProps> = ({ onOpenNewsPage }) => {
                     </button>
 
                     {/* Open Modal Button */}
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all shadow-sm">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-gradient-to-r group-hover:from-[#F6E7B8] group-hover:to-[#EED89F] group-hover:text-black group-hover:border-[#EEDC9A]/50 transition-all shadow-sm">
                       <ArrowRight className="w-4 h-4" />
                     </div>
                   </div>
                 </div>
-              </BorderGlow>
+              </div>
             </BentoGridItem>
           );
         })}
@@ -199,12 +183,12 @@ export const NewsSection: React.FC<NewsSectionProps> = ({ onOpenNewsPage }) => {
         </InteractiveHoverButton>
       </div>
 
-      {/* Modal Reader Portaled directly to document.body with Body Lock & High Performance */}
+      {/* Modal Reader Portaled directly to document.body with Perfect Mobile/Desktop Layout */}
       {selectedNews &&
         createPortal(
           <div
             data-lenis-prevent="true"
-            className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-sm animate-fadeIn overscroll-contain"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fadeIn overscroll-contain"
             onClick={(e) => {
               if (e.target === e.currentTarget) setSelectedNews(null);
             }}
@@ -213,64 +197,63 @@ export const NewsSection: React.FC<NewsSectionProps> = ({ onOpenNewsPage }) => {
           >
             <div
               data-lenis-prevent="true"
-              className="max-w-2xl w-full max-h-[85vh] my-auto overflow-y-auto modal-scrollbar overscroll-contain rounded-2xl sm:rounded-3xl p-5 sm:p-8 relative border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.85)] space-y-4 sm:space-y-6 bg-[#0c0c10] text-white select-text"
+              className="max-w-2xl w-full max-h-[88vh] flex flex-col rounded-3xl border border-white/20 shadow-[0_25px_60px_rgba(0,0,0,0.95)] bg-[#0c0c10] text-white overflow-hidden my-auto"
             >
-              {/* Close Button */}
-              <button
-                onClick={() => setSelectedNews(null)}
-                className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 rounded-full bg-white/5 hover:bg-white/15 text-neutral-300 hover:text-white border border-white/15 transition-all cursor-pointer z-10"
-                aria-label="Fechar modal"
-              >
-                <X className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
+              {/* Fixed Modal Header */}
+              <div className="p-5 sm:p-7 pb-4 border-b border-white/10 relative flex-shrink-0 bg-[#0c0c10]/95 backdrop-blur-sm pr-14">
+                {/* Close Button */}
+                <button
+                  onClick={() => setSelectedNews(null)}
+                  className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 rounded-full bg-white/5 hover:bg-white/15 text-neutral-300 hover:text-white border border-white/15 transition-all cursor-pointer z-10"
+                  aria-label="Fechar modal"
+                >
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
 
-              <div className="space-y-3 pr-8">
-                <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-                  <StarBorder
-                    as="div"
-                    color="#f59e0b"
-                    speed="4s"
-                    thickness={1}
-                    backgroundColor="rgba(20, 20, 25, 0.85)"
-                    borderColor="rgba(245, 158, 11, 0.35)"
-                    innerClassName="px-3.5 py-1 text-xs font-syne font-bold uppercase tracking-wider text-amber-200"
-                  >
-                    {selectedNews.tag}
-                  </StarBorder>
+                <div className="space-y-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#EEDC9A]/15 text-[#EEDC9A] border border-[#EEDC9A]/30 text-[10px] sm:text-xs font-bold font-syne uppercase tracking-wider">
+                      {selectedNews.tag}
+                    </span>
 
-                  <span className="text-xs text-neutral-400 font-light">
-                    {selectedNews.date}
-                  </span>
-                </div>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.04] text-neutral-300 text-[10px] sm:text-xs border border-white/10">
+                      <ShieldCheck className="w-3 h-3 text-[#EEDC9A]" />
+                      <span>{selectedNews.category}</span>
+                    </span>
 
-                <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold font-syne text-white leading-snug">
-                  {selectedNews.title}
-                </h2>
+                    <div className="flex items-center gap-1 text-[11px] sm:text-xs text-neutral-400 font-light ml-auto">
+                      <Calendar className="w-3 h-3 text-neutral-500" />
+                      <span>{selectedNews.date}</span>
+                    </div>
+                  </div>
 
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] text-neutral-300 text-xs border border-white/10">
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{selectedNews.category}</span>
+                  <h2 className="text-lg sm:text-2xl font-bold font-syne text-white leading-snug">
+                    {selectedNews.title}
+                  </h2>
                 </div>
               </div>
 
-              <div className="prose prose-invert prose-amber max-w-none text-xs sm:text-sm text-neutral-300 font-light leading-relaxed space-y-4 pt-4 border-t border-white/10 whitespace-pre-line">
-                <p>{selectedNews.content}</p>
-                <p>
-                  Para mais informações sobre inscrições, credenciamento de mestres e acomodação para caravanas, entre em contato diretamente com nossa secretaria através do formulário de contato abaixo ou WhatsApp oficial.
-                </p>
+              {/* Scrollable Modal Content */}
+              <div className="p-5 sm:p-7 flex-1 overflow-y-auto custom-scrollbar text-xs sm:text-sm text-neutral-300 font-light leading-relaxed space-y-4 select-text">
+                <p className="whitespace-pre-line leading-relaxed">{selectedNews.content}</p>
+
+                <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 text-xs text-neutral-300 leading-relaxed font-normal">
+                  💡 Para mais informações sobre inscrições, credenciamento e acomodação, entre em contato através do formulário de contato abaixo ou WhatsApp oficial.
+                </div>
               </div>
 
-              <div className="pt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10">
+              {/* Fixed Modal Footer with Action Buttons */}
+              <div className="p-4 sm:p-6 border-t border-white/10 bg-[#0c0c10]/95 backdrop-blur-sm flex items-center justify-between gap-3 flex-shrink-0">
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={(e) => handleShare(selectedNews, e)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/5 hover:bg-white/15 text-neutral-300 hover:text-white border border-white/10 text-xs font-semibold transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/5 hover:bg-white/15 text-neutral-300 hover:text-white border border-white/10 text-xs font-semibold transition-all cursor-pointer active:scale-95"
                   >
                     {copiedId === selectedNews.id ? (
                       <>
                         <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-emerald-400 font-bold">Link Copiado!</span>
+                        <span className="text-emerald-400 font-bold">Copiado!</span>
                       </>
                     ) : (
                       <>
@@ -288,18 +271,19 @@ export const NewsSection: React.FC<NewsSectionProps> = ({ onOpenNewsPage }) => {
                       setSelectedNews(null);
                       handleOpenAllNews(e);
                     }}
-                    className="text-xs text-amber-400 hover:text-amber-300 underline font-bold uppercase tracking-wider hidden sm:inline"
+                    className="text-xs text-[#EEDC9A] hover:underline font-bold uppercase tracking-wider hidden sm:inline"
                   >
                     Ver todas as notícias &gt;
                   </a>
                 </div>
 
-                <InteractiveHoverButton
+                <button
+                  type="button"
                   onClick={() => setSelectedNews(null)}
-                  className="px-6 py-2.5 text-xs font-bold uppercase tracking-wider"
+                  className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#F6E7B8] via-[#EED89F] to-[#E3C887] text-black text-xs font-black font-syne uppercase tracking-wider shadow-[0_0_15px_rgba(238,220,154,0.3)] hover:scale-105 active:scale-95 transition-all cursor-pointer"
                 >
                   Entendido
-                </InteractiveHoverButton>
+                </button>
               </div>
             </div>
           </div>,

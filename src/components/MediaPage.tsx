@@ -140,7 +140,7 @@ export const MediaPage: React.FC<MediaPageProps> = ({ onBackToHome }) => {
           src="/midias/1_midia.mp4"
           align="center"
           weight={900}
-          textScale={0.16}
+          textScale={0.28}
           tracking={-0.01}
           fillScale={1.3}
           parallax={24}
@@ -148,7 +148,7 @@ export const MediaPage: React.FC<MediaPageProps> = ({ onBackToHome }) => {
           reveal="rise"
           duration={1.2}
           trigger="mount"
-          className="font-black font-syne uppercase tracking-tight py-1"
+          className="font-black font-syne uppercase tracking-tight py-2 text-4xl sm:text-6xl lg:text-7xl"
         />
       </div>
 

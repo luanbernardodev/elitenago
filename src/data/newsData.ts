@@ -10,14 +10,12 @@ export const ALL_NEWS: NewsItem[] = [
     content: `O Grupo Elite Nagô tem a honra de convidar toda a comunidade da Capoeira para o nosso tradicional Grande Batizado e Troca de Cordas 2026.
 
 Este ano, o evento celebra a expansão e o fortalecimento de nossas raízes, contando com uma programação intensiva de dois dias:
-• Oficinas práticas de movimentação avançada e floreios
-• Aprofundamento nos fundamentos históricos da Capoeira Nagô
-• Vivência de Maculelê e Samba de Roda tradicional
-• Grande Roda de Mestres convidados com representantes da Bahia, Rio de Janeiro, São Paulo e Minas Gerais
+• Oficinas práticas de movimentação
+• Grande Roda de Mestres convidados de diversos estados
 • Cerimônia solene de graduação e entrega de novas cordas
 
-Local: Ginásio Poliesportivo Municipal / Centro de Treinamento Elite Nagô
-Acomodação solidária e credenciamento de caravanas disponíveis mediante contato prévio.`,
+Local: Ginásio Poliesportivo de Laranjal / Centro de Treinamento Elite Nagô
+Acomodação e credenciamento de caravanas disponíveis mediante contato prévio.`,
     featured: true,
     tag: 'DESTAQUE',
   },
@@ -62,14 +60,13 @@ Inscrições abertas na secretaria da academia e nas unidades parceiras particip
     category: 'Competição & Jogos',
     date: '18 Janeiro, 2027',
     summary: 'Torneio técnico que valoriza a ginga, a malícia, a técnica refinada e o jogo limpo em duplas e solos.',
-    content: `Vem aí a 4ª Edição da Copa Regional Elite Nagô! Um encontro que premia não apenas a plasticidade acrobática, mas sobretudo os fundamentos da Capoeira: volume de jogo, resposta no tempo da cantiga, esquivas precisas e camaradagem na roda.
+    content: `Vem aí a Xª Edição dos Jogos Internos Elite Nagô! Um encontro que premia não apenas a plasticidade acrobática, mas sobretudo os fundamentos da Capoeira: volume de jogo, resposta no tempo da cantiga, esquivas precisas e camaradagem na roda.
 
 Categorias em disputa:
-• Juvenil (13 a 17 anos) - Masculino e Feminino
-• Graduados e Instrutores - Jogos de Benguela e São Bento Grande
-• Master (acima de 40 anos) - Jogo de Mandinga e Tradição
+• Juvenil (X a X anos) - Masculino e Feminino
+• Graduados e Instrutores - Masculino e Feminino
 
-Premiação em troféus artesanais talhados em madeira e medalhas exclusivas. Venha torcer e prestigiar a nata da Capoeira!`,
+Premiação em troféus e medalhas exclusivas. Venha torcer e prestigiar a Capoeira!`,
     featured: false,
     tag: 'COMPETIÇÃO',
   },
