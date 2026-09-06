@@ -9,15 +9,15 @@ interface MediaSectionProps {
 
 const CIRCULAR_GALLERY_ITEMS = [
   {
-    image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1200&auto=format&fit=crop',
-    text: 'Roda e Energia'
+    image: 'https://i.imgur.com/A46hzMt.jpeg',
+    text: 'Levando a Capoeira para o mundo'
   },
   {
     image: '/img/cm_soldado.jpg',
     text: 'Contramestre Soldado'
   },
   {
-    image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?q=80&w=1200&auto=format&fit=crop',
+    image: 'https://i.imgur.com/RWa2XaP.jpeg',
     text: 'Treino e Movimento'
   },
   {
@@ -25,27 +25,27 @@ const CIRCULAR_GALLERY_ITEMS = [
     text: 'Mestre Pinheiro'
   },
   {
-    image: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?q=80&w=1200&auto=format&fit=crop',
-    text: 'Força e Disciplina'
+    image: 'https://i.imgur.com/TOTCg4x.jpeg',
+    text: 'Musicalidade'
   },
   {
     image: '/img/professor_dom_ruan.jpeg',
     text: 'Professor Dom Ruan'
   },
   {
-    image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=1200&auto=format&fit=crop',
+    image: 'https://i.imgur.com/IiYz7yh.jpeg',
     text: 'Toques de Berimbau'
   },
   {
-    image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1200&auto=format&fit=crop',
-    text: 'Acrobacias e Floreios'
+    image: 'https://i.imgur.com/phPJ0Qh.jpeg',
+    text: 'Núcleos'
   },
   {
-    image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1200&auto=format&fit=crop',
-    text: 'Cultura Nagô'
+    image: 'https://i.imgur.com/N3HsBOJ.jpeg',
+    text: 'Elite Nagô nas Escolas'
   },
   {
-    image: 'https://images.unsplash.com/photo-1517963879433-6ad2b056d712?q=80&w=1200&auto=format&fit=crop',
+    image: 'https://i.imgur.com/JtVhftz.jpeg',
     text: 'Arte Marcial'
   }
 ];

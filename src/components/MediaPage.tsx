@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Share2, Check, Move3d } from 'lucide-react';
+import { ArrowLeft, Share2, Check } from 'lucide-react';
 import { DomeGallery } from './ui/DomeGallery';
 import { MaskedHeading } from './ui/MaskedHeading';
 
@@ -17,7 +17,7 @@ const MEDIA_GALLERY_IMAGES = [
     alt: 'Contramestre Soldado - Elite Nagô'
   },
   {
-    src: 'https://i.imgur.com/W2kehOO.jpeg',
+    src: 'https://i.imgur.com/RWa2XaP.jpeg',
     alt: 'Treino e Movimentação Técnica'
   },
   {
@@ -37,16 +37,12 @@ const MEDIA_GALLERY_IMAGES = [
     alt: 'Toques de Berimbau e Cantigas'
   },
   {
-    src: 'https://i.imgur.com/E1qX9rC.jpeg',
+    src: 'https://i.imgur.com/TOTCg4x.jpeg',
     alt: 'Acrobacias, Floreios e Saltos'
   },
   {
-    src: 'https://i.imgur.com/TOTCg4x.jpeg',
-    alt: 'Cultura e Expressão Nagô'
-  },
-  {
     src: 'https://i.imgur.com/IiYz7yh.jpeg',
-    alt: 'Arte Marcial e Tradição Popular'
+    alt: 'Cultura e Expressão Nagô'
   },
   {
     src: 'https://i.imgur.com/phPJ0Qh.jpeg',
@@ -137,7 +133,7 @@ export const MediaPage: React.FC<MediaPageProps> = ({ onBackToHome }) => {
       </header>
 
       {/* Hero Header Section with MaskedHeading */}
-      <div className="relative pt-6 pb-1 px-4 max-w-5xl mx-auto text-center space-y-2">
+      <div className="relative pt-6 pb-2 px-4 max-w-5xl mx-auto text-center space-y-2">
         <MaskedHeading
           text="MÍDIAS"
           mediaType="video"
@@ -154,16 +150,11 @@ export const MediaPage: React.FC<MediaPageProps> = ({ onBackToHome }) => {
           trigger="mount"
           className="font-black font-syne uppercase tracking-tight py-1"
         />
-
-        <p className="text-xs sm:text-sm text-neutral-400 font-light max-w-md mx-auto flex items-center justify-center gap-1.5">
-          <Move3d className="w-4 h-4 text-[#EEDC9A] shrink-0" />
-          <span>Gire a cúpula esférica em 360° e clique nas fotos para ver detalhes.</span>
-        </p>
       </div>
 
       {/* Full-Width 3D Dome Gallery Container Filling Edge-to-Edge */}
       <main className="flex-1 w-full relative overflow-hidden bg-transparent pb-4">
-        <div className="w-full h-[calc(100vh-210px)] min-h-[520px] sm:min-h-[640px] relative overflow-hidden bg-transparent">
+        <div className="w-full h-[calc(100vh-170px)] min-h-[520px] sm:min-h-[640px] relative overflow-hidden bg-transparent">
           <DomeGallery
             images={MEDIA_GALLERY_IMAGES}
             fit={0.65}
