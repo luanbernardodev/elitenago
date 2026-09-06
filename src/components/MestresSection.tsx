@@ -47,8 +47,6 @@ const LEADERSHIP: LeadershipMember[] = [
 ];
 
 export const MestresSection: React.FC = () => {
-  const [activeIdx, setActiveIdx] = React.useState(0);
-
   return (
     <section id="sobre" className="relative py-16 sm:py-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto z-10 overflow-hidden">
       {/* Section Grid */}
@@ -80,8 +78,6 @@ export const MestresSection: React.FC = () => {
             delay={4500}
             pauseOnHover={true}
             skewAmount={3}
-            activeIndex={activeIdx}
-            onActiveIndexChange={setActiveIdx}
             className="scale-[0.88] xs:scale-[0.95] sm:scale-100"
           >
             {LEADERSHIP.map((member) => (
@@ -126,27 +122,6 @@ export const MestresSection: React.FC = () => {
               </Card>
             ))}
           </CardSwap>
-
-          {/* Interactive Mestre Selector Pills */}
-          <div className="flex items-center justify-center gap-2 mt-8 z-20">
-            {LEADERSHIP.map((member, i) => {
-              const isActive = activeIdx === i;
-              return (
-                <button
-                  key={member.id}
-                  onClick={() => setActiveIdx(i)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium tracking-wider transition-all duration-300 cursor-pointer ${
-                    isActive
-                      ? 'bg-amber-400 text-black font-bold shadow-[0_0_15px_rgba(245,158,11,0.5)] scale-105'
-                      : 'bg-neutral-900/80 text-neutral-400 border border-white/10 hover:border-amber-400/40 hover:text-white'
-                  }`}
-                  aria-label={`Ver ${member.name}`}
-                >
-                  {member.name.split(' ')[0]} {member.name.split(' ')[1] || ''}
-                </button>
-              );
-            })}
-          </div>
         </div>
       </div>
     </section>
