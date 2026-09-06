@@ -108,6 +108,9 @@ export const CardSwap: React.FC<CardSwapProps> = ({
   const intervalRef = useRef<number>(0);
   const container = useRef<HTMLDivElement>(null);
 
+  const swapRef = useRef<() => void>(() => {});
+  const bringToFrontRef = useRef<(idx: number) => void>(() => {});
+
   useEffect(() => {
     const total = refs.length;
     refs.forEach((r, i) => placeNow(r.current!, makeSlot(i, cardDistance, verticalDistance, total), skewAmount));
@@ -116,7 +119,9 @@ export const CardSwap: React.FC<CardSwapProps> = ({
       if (order.current.length < 2) return;
 
       const [front, ...rest] = order.current;
-      const elFront = refs[front].current!;
+      const elFront = refs[front]?.current;
+      if (!elFront) return;
+
       const tl = gsap.timeline();
       tlRef.current = tl;
 
@@ -128,7 +133,8 @@ export const CardSwap: React.FC<CardSwapProps> = ({
 
       tl.addLabel('promote', `-=${config.durDrop * config.promoteOverlap}`);
       rest.forEach((idx, i) => {
-        const el = refs[idx].current!;
+        const el = refs[idx]?.current;
+        if (!el) return;
         const slot = makeSlot(i, cardDistance, verticalDistance, refs.length);
         tl.set(el, { zIndex: slot.zIndex }, 'promote');
         tl.to(
@@ -170,7 +176,76 @@ export const CardSwap: React.FC<CardSwapProps> = ({
       });
     };
 
-    swap();
+    const bringToFront = (clickedIdx: number) => {
+      const currentOrder = order.current;
+      const posInOrder = currentOrder.indexOf(clickedIdx);
+      if (posInOrder === -1) return;
+
+      // If already at front, swap to next
+      if (posInOrder === 0) {
+        swap();
+        clearInterval(intervalRef.current);
+        intervalRef.current = window.setInterval(swap, delay);
+        return;
+      }
+
+      // Kill active timeline
+      tlRef.current?.kill();
+      clearInterval(intervalRef.current);
+
+      const totalCards = refs.length;
+      const newOrder = [clickedIdx, ...currentOrder.filter((id) => id !== clickedIdx)];
+
+      const tl = gsap.timeline({
+        onComplete: () => {
+          order.current = newOrder;
+          intervalRef.current = window.setInterval(swap, delay);
+        }
+      });
+      tlRef.current = tl;
+
+      const clickedEl = refs[clickedIdx]?.current;
+      if (clickedEl) {
+        const frontSlot = makeSlot(0, cardDistance, verticalDistance, totalCards);
+        // Elevate zIndex immediately so it flies over other cards smoothly
+        tl.set(clickedEl, { zIndex: totalCards + 10 });
+        tl.to(
+          clickedEl,
+          {
+            x: frontSlot.x,
+            y: frontSlot.y,
+            z: frontSlot.z,
+            duration: config.durMove * 0.75,
+            ease: config.ease,
+          },
+          0
+        );
+        tl.set(clickedEl, { zIndex: frontSlot.zIndex });
+      }
+
+      // Reposition all other cards to their new rear slots
+      newOrder.slice(1).forEach((cardId, i) => {
+        const el = refs[cardId]?.current;
+        if (!el) return;
+        const slot = makeSlot(i + 1, cardDistance, verticalDistance, totalCards);
+        tl.set(el, { zIndex: slot.zIndex }, 0);
+        tl.to(
+          el,
+          {
+            x: slot.x,
+            y: slot.y,
+            z: slot.z,
+            duration: config.durMove * 0.75,
+            ease: config.ease,
+          },
+          0.04 * (i + 1)
+        );
+      });
+    };
+
+    swapRef.current = swap;
+    bringToFrontRef.current = bringToFront;
+
     intervalRef.current = window.setInterval(swap, delay);
 
     if (pauseOnHover) {
@@ -201,6 +276,8 @@ export const CardSwap: React.FC<CardSwapProps> = ({
         ref: refs[i],
         style: { width, height, ...(child.props.style ?? {}) },
         onClick: e => {
+          e.stopPropagation();
+          bringToFrontRef.current(i);
           child.props.onClick?.(e as React.MouseEvent<HTMLDivElement>);
           onCardClick?.(i);
         }

@@ -84,7 +84,7 @@ export const MestresSection: React.FC = () => {
             {LEADERSHIP.map((member) => (
               <Card
                 key={member.id}
-                className="group select-none cursor-pointer border border-white/20 hover:border-white/40 shadow-2xl transition-all"
+                className="group select-none cursor-pointer border border-white/20 hover:border-amber-400/60 shadow-2xl hover:shadow-[0_0_30px_rgba(238,220,154,0.25)] transition-all active:scale-[0.98]"
               >
                 <div className="relative w-full h-full overflow-hidden rounded-2xl bg-neutral-950">
                   {/* Member Photo */}
