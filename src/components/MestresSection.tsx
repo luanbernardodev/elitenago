@@ -47,6 +47,8 @@ const LEADERSHIP: LeadershipMember[] = [
 ];
 
 export const MestresSection: React.FC = () => {
+  const [activeIdx, setActiveIdx] = React.useState(0);
+
   return (
     <section id="sobre" className="relative py-16 sm:py-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto z-10 overflow-hidden">
       {/* Section Grid */}
@@ -69,29 +71,30 @@ export const MestresSection: React.FC = () => {
         </div>
 
         {/* Right Leadership Showcase with CardSwap */}
-        <div className="lg:col-span-6 flex items-center justify-center relative min-h-[420px] sm:min-h-[480px] w-full py-4 overflow-visible">
+        <div className="lg:col-span-6 flex flex-col items-center justify-center relative min-h-[440px] sm:min-h-[500px] w-full py-4 overflow-visible">
           <CardSwap
             width={310}
             height={420}
-            cardDistance={36}
-            verticalDistance={42}
+            cardDistance={40}
+            verticalDistance={44}
             delay={4500}
             pauseOnHover={true}
             skewAmount={3}
-            easing="elastic"
+            activeIndex={activeIdx}
+            onActiveIndexChange={setActiveIdx}
             className="scale-[0.88] xs:scale-[0.95] sm:scale-100"
           >
             {LEADERSHIP.map((member) => (
               <Card
                 key={member.id}
-                className="group select-none cursor-pointer border border-white/20 hover:border-amber-400/60 shadow-2xl hover:shadow-[0_0_30px_rgba(238,220,154,0.25)] transition-all active:scale-[0.98]"
+                className="group select-none cursor-pointer border border-white/20 hover:border-amber-400/80 shadow-2xl hover:shadow-[0_0_35px_rgba(238,220,154,0.3)] transition-all active:scale-[0.98]"
               >
                 <div className="relative w-full h-full overflow-hidden rounded-2xl bg-neutral-950">
                   {/* Member Photo */}
                   <img
                     src={member.image}
                     alt={member.name}
-                    className="w-full h-full object-cover object-top filter brightness-95 group-hover:scale-105 transition-transform duration-700"
+                    className="w-full h-full object-cover object-top filter brightness-95 group-hover:scale-105 transition-transform duration-700 pointer-events-none"
                     loading="lazy"
                   />
 
@@ -123,6 +126,27 @@ export const MestresSection: React.FC = () => {
               </Card>
             ))}
           </CardSwap>
+
+          {/* Interactive Mestre Selector Pills */}
+          <div className="flex items-center justify-center gap-2 mt-8 z-20">
+            {LEADERSHIP.map((member, i) => {
+              const isActive = activeIdx === i;
+              return (
+                <button
+                  key={member.id}
+                  onClick={() => setActiveIdx(i)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium tracking-wider transition-all duration-300 cursor-pointer ${
+                    isActive
+                      ? 'bg-amber-400 text-black font-bold shadow-[0_0_15px_rgba(245,158,11,0.5)] scale-105'
+                      : 'bg-neutral-900/80 text-neutral-400 border border-white/10 hover:border-amber-400/40 hover:text-white'
+                  }`}
+                  aria-label={`Ver ${member.name}`}
+                >
+                  {member.name.split(' ')[0]} {member.name.split(' ')[1] || ''}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>
