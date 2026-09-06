@@ -9,15 +9,15 @@ interface MediaPageProps {
 
 const MEDIA_GALLERY_IMAGES = [
   {
-    src: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1400&auto=format&fit=crop',
-    alt: 'Roda de Capoeira e Energia Nagô'
+    src: 'https://i.imgur.com/N3HsBOJ.jpeg',
+    alt: 'Roda de Capoeira e Energia Nagô nas escolas'
   },
   {
     src: '/img/cm_soldado.jpg',
     alt: 'Contramestre Soldado - Elite Nagô'
   },
   {
-    src: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?q=80&w=1400&auto=format&fit=crop',
+    src: 'https://i.imgur.com/W2kehOO.jpeg',
     alt: 'Treino e Movimentação Técnica'
   },
   {
@@ -25,7 +25,7 @@ const MEDIA_GALLERY_IMAGES = [
     alt: 'Mestre Pinheiro - Mestre Fundador'
   },
   {
-    src: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?q=80&w=1400&auto=format&fit=crop',
+    src: 'https://canva.link/79tewh09ck5hwtl',
     alt: 'Força, Disciplina e Tradição'
   },
   {
@@ -33,19 +33,19 @@ const MEDIA_GALLERY_IMAGES = [
     alt: 'Professor Dom Ruan - Elite Nagô'
   },
   {
-    src: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=1400&auto=format&fit=crop',
+    src: 'https://canva.link/79tewh09ck5hwtl',
     alt: 'Toques de Berimbau e Cantigas'
   },
   {
-    src: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1400&auto=format&fit=crop',
+    src: 'https://canva.link/79tewh09ck5hwtl',
     alt: 'Acrobacias, Floreios e Saltos'
   },
   {
-    src: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1400&auto=format&fit=crop',
+    src: 'https://canva.link/79tewh09ck5hwtl',
     alt: 'Cultura e Expressão Nagô'
   },
   {
-    src: 'https://images.unsplash.com/photo-1517963879433-6ad2b056d712?q=80&w=1400&auto=format&fit=crop',
+    src: 'https://canva.link/79tewh09ck5hwtl',
     alt: 'Arte Marcial e Tradição Popular'
   }
 ];
