@@ -10,11 +10,15 @@ import { InteractiveHoverButton } from '@/registry/magicui/interactive-hover-but
 import { StaggeredMenu, StaggeredMenuItem, StaggeredMenuSocialItem } from './StaggeredMenu';
 import { DonationModal } from './DonationModal';
 
+import { cn } from '@/lib/utils';
+
 interface NavbarProps {
   scrollProgress?: number;
+  visible?: boolean;
+  className?: string;
 }
 
-export const Navbar: React.FC<NavbarProps> = () => {
+export const Navbar: React.FC<NavbarProps> = ({ visible = true, className = '' }) => {
   const [isDonationModalOpen, setIsDonationModalOpen] = useState(false);
 
   const desktopNavItems: NavItem[] = [
@@ -133,7 +137,13 @@ export const Navbar: React.FC<NavbarProps> = () => {
   return (
     <>
       {/* Desktop Navigation */}
-      <ResizableNav>
+      <ResizableNav
+        className={cn(
+          'transition-all duration-700 ease-out',
+          visible ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-6 pointer-events-none',
+          className
+        )}
+      >
         <NavBody>
           <NavbarLogo />
           <NavItems items={desktopNavItems} />
@@ -183,7 +193,12 @@ export const Navbar: React.FC<NavbarProps> = () => {
       </ResizableNav>
 
       {/* Mobile Only Navigation: StaggeredMenu */}
-      <div className="block md:hidden">
+      <div
+        className={cn(
+          'block md:hidden transition-opacity duration-700 ease-out',
+          visible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        )}
+      >
         <StaggeredMenu
           position="right"
           items={mobileMenuItems}

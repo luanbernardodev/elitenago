@@ -17,6 +17,7 @@ import { ScrollTopButton } from './components/ScrollTopButton';
 
 export function App() {
   const [currentView, setCurrentView] = useState<'home' | 'noticias' | 'playlist' | 'midias'>('home');
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // Check URL params / hash on mount and on popstate
   useEffect(() => {
@@ -123,10 +124,10 @@ export function App() {
   return (
     <div className="relative min-h-[950vh] bg-[#050505] text-amber-50 selection:bg-amber-500 selection:text-black">
       {/* Background Fullscreen Canvas Scrollytelling Engine */}
-      <ScrollyCanvas />
+      <ScrollyCanvas onLoadComplete={() => setIsLoaded(true)} />
 
       {/* Floating UI Elements */}
-      <Navbar />
+      <Navbar visible={isLoaded} />
       <ScrollTopButton />
 
       {/* Overlay Content Layers over 950vh Scroll Container */}

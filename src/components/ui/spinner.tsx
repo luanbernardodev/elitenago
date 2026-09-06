@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 
 export interface SpinnerProps extends React.HTMLAttributes<HTMLDivElement> {
   size?: 'sm' | 'md' | 'lg' | 'xl';
-  color?: 'current' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'accent' | 'muted';
+  color?: 'current' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'accent' | 'muted' | 'gold';
   label?: React.ReactNode;
   labelClassName?: string;
   spinnerClassName?: string;
@@ -20,12 +20,12 @@ const strokeMap: Record<string, number> = {
   sm: 3,
   md: 3.5,
   lg: 3.5,
-  xl: 4,
+  xl: 3.5,
 };
 
 export const Spinner: React.FC<SpinnerProps> = ({
   size = 'md',
-  color = 'primary',
+  color = 'gold',
   label,
   labelClassName,
   spinnerClassName,
@@ -33,8 +33,8 @@ export const Spinner: React.FC<SpinnerProps> = ({
   ...props
 }) => {
   const colorClass =
-    color === 'primary' || color === 'accent'
-      ? 'text-amber-400'
+    color === 'gold' || color === 'primary' || color === 'accent'
+      ? 'text-[#eedc9a]'
       : color === 'success'
       ? 'text-emerald-400'
       : color === 'warning'
@@ -53,12 +53,7 @@ export const Spinner: React.FC<SpinnerProps> = ({
       {...props}
     >
       <div className={cn('relative flex items-center justify-center', sizeMap[size] || sizeMap.md, colorClass, spinnerClassName)}>
-        {/* Subtle Ambient Glow for XL & LG */}
-        {(size === 'xl' || size === 'lg') && (
-          <div className="absolute inset-0 rounded-full bg-amber-400/15 blur-xl pointer-events-none" />
-        )}
-
-        {/* HeroUI / NextUI Signature Double-Track Smooth Spinner */}
+        {/* Pure circular SVG with zero blur/drop-shadow box artifacts */}
         <svg
           className="w-full h-full animate-spin"
           viewBox="0 0 48 48"
@@ -83,9 +78,9 @@ export const Spinner: React.FC<SpinnerProps> = ({
             stroke="currentColor"
             strokeWidth={strokeMap[size] || 3.5}
             strokeLinecap="round"
-            strokeDasharray="80 140"
+            strokeDasharray="75 145"
             strokeDashoffset="0"
-            className="opacity-95 drop-shadow-[0_0_8px_currentColor]"
+            className="opacity-90"
           />
         </svg>
       </div>
@@ -93,7 +88,7 @@ export const Spinner: React.FC<SpinnerProps> = ({
       {label && (
         <span
           className={cn(
-            'text-sm tracking-wider font-medium text-amber-200/90 font-montserrat',
+            'text-xs md:text-sm tracking-[0.2em] font-medium text-[#eedc9a]/90 font-montserrat',
             labelClassName
           )}
         >

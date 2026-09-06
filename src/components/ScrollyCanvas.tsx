@@ -24,7 +24,6 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
   const animationFrameRef = useRef<number | null>(null);
   const onFrameChangeRef = useRef(onFrameChange);
 
-  const [loadingProgress, setLoadingProgress] = useState<number>(0);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
   // Preload Images with Progressive Priority Loading
@@ -36,7 +35,6 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
     const checkComplete = () => {
       loadedCount++;
       const percent = Math.min(100, Math.floor((loadedCount / TOTAL_FRAMES) * 100));
-      setLoadingProgress(percent);
       if (onProgress) onProgress(percent);
 
       if (loadedCount === 1) {
@@ -46,6 +44,7 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
       // Unlock UI as soon as initial 15% (36 frames) are ready so the user is never blocked
       if (loadedCount >= Math.floor(TOTAL_FRAMES * 0.15)) {
         setIsLoaded(true);
+        if (onLoadComplete) onLoadComplete();
       }
 
       if (loadedCount === TOTAL_FRAMES) {
@@ -278,27 +277,19 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#050505] text-white">
           <div className="relative flex flex-col items-center max-w-md px-6 text-center">
             {/* Logo Brand Title */}
-            <h1 className="text-3xl md:text-5xl font-black tracking-widest font-syne text-gold-gradient mb-2 drop-shadow-[0_0_25px_rgba(212,175,55,0.25)]">
+            <h1 className="text-4xl md:text-6xl font-black tracking-widest font-syne text-gold-gradient mb-10">
               ELITE NAGÔ
             </h1>
-            <p className="text-[10px] md:text-xs uppercase tracking-[0.35em] text-amber-400/80 mb-10 font-cinzel">
-              Grupo de Capoeira • Arte & Tradição
-            </p>
 
             {/* Extra Large Spinner in Soft Gold with text */}
-            <div className="flex flex-col items-center justify-center gap-6">
+            <div className="flex flex-col items-center justify-center gap-5">
               <Spinner
                 size="xl"
-                className="text-amber-400 drop-shadow-[0_0_20px_rgba(245,158,11,0.4)]"
+                color="gold"
               />
-              <div className="flex flex-col items-center gap-2">
-                <span className="text-sm md:text-base font-medium tracking-[0.2em] text-amber-200/90 font-montserrat uppercase">
-                  Carregando experiência...
-                </span>
-                <span className="text-xs font-mono text-amber-400/60 tracking-wider">
-                  {Math.min(100, Math.floor((loadingProgress / 15) * 100))}%
-                </span>
-              </div>
+              <span className="text-xs md:text-sm font-medium tracking-[0.25em] text-[#eedc9a]/90 font-montserrat uppercase">
+                Carregando experiência...
+              </span>
             </div>
           </div>
         </div>
