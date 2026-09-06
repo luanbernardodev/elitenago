@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
+import { Spinner } from './ui/spinner';
 
 interface ScrollyCanvasProps {
   onLoadComplete?: () => void;
@@ -277,31 +278,27 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#050505] text-white">
           <div className="relative flex flex-col items-center max-w-md px-6 text-center">
             {/* Logo Brand Title */}
-            <h1 className="text-4xl md:text-6xl font-black tracking-widest font-syne text-gold-gradient mb-2">
+            <h1 className="text-3xl md:text-5xl font-black tracking-widest font-syne text-gold-gradient mb-2 drop-shadow-[0_0_25px_rgba(212,175,55,0.25)]">
               ELITE NAGÔ
             </h1>
-            <p className="text-xs uppercase tracking-[0.3em] text-amber-400/80 mb-8 font-cinzel">
+            <p className="text-[10px] md:text-xs uppercase tracking-[0.35em] text-amber-400/80 mb-10 font-cinzel">
               Grupo de Capoeira • Arte & Tradição
             </p>
 
-            {/* Progress Bar Container */}
-            <div className="w-64 md:w-80 h-1.5 bg-neutral-900 rounded-full overflow-hidden border border-amber-500/30 mb-4 shadow-[0_0_15px_rgba(212,175,55,0.2)]">
-              <div
-                className="h-full bg-gradient-to-r from-amber-600 via-amber-400 to-amber-200 transition-all duration-150 ease-out rounded-full"
-                style={{ width: `${Math.min(100, Math.floor((loadingProgress / 15) * 100))}%` }}
+            {/* Extra Large Spinner in Soft Gold with text */}
+            <div className="flex flex-col items-center justify-center gap-6">
+              <Spinner
+                size="xl"
+                className="text-amber-400 drop-shadow-[0_0_20px_rgba(245,158,11,0.4)]"
               />
-            </div>
-
-            {/* Loading Stats */}
-            <div className="flex items-center justify-between w-64 md:w-80 text-xs font-mono text-amber-200/70">
-              <span>CARREGANDO EXPERIÊNCIA</span>
-              <span className="font-bold text-amber-400">{Math.min(100, Math.floor((loadingProgress / 15) * 100))}%</span>
-            </div>
-
-            {/* Subtle Spinner */}
-            <div className="mt-8 flex items-center gap-2 text-xs text-neutral-500 tracking-wider">
-              <div className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-              <span>PREPARANDO EXPERIÊNCIA CINEMATOGRÁFICA</span>
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-sm md:text-base font-medium tracking-[0.2em] text-amber-200/90 font-montserrat uppercase">
+                  Carregando experiência...
+                </span>
+                <span className="text-xs font-mono text-amber-400/60 tracking-wider">
+                  {Math.min(100, Math.floor((loadingProgress / 15) * 100))}%
+                </span>
+              </div>
             </div>
           </div>
         </div>
