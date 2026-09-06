@@ -17,6 +17,7 @@ import {
 import { NewsItem } from '../types';
 import { ALL_NEWS } from '../data/newsData';
 import { GooeyInput } from './ui/gooey-input';
+import { StarBorder } from './ui/StarBorder';
 
 interface NewsPageProps {
   onBackToHome?: () => void;
@@ -289,14 +290,22 @@ export const NewsPage: React.FC<NewsPageProps> = ({ onBackToHome }) => {
                 >
                   {/* MOBILE & DESKTOP LIST LAYOUT */}
                   {desktopViewMode === 'list' ? (
-                    <div className="p-5 sm:p-7 rounded-2xl border border-white/10 bg-neutral-950/80 hover:bg-neutral-900/90 hover:border-[#EEDC9A]/40 transition-all duration-300 shadow-xl hover:shadow-[0_10px_30px_rgba(0,0,0,0.8)] group">
+                    <div className="p-5 sm:p-7 rounded-2xl border border-white/10 bg-[#0a0a0f] hover:bg-[#101017] hover:border-[#EEDC9A]/40 transition-all duration-300 shadow-2xl hover:shadow-[0_15px_35px_rgba(0,0,0,0.9)] group">
                       <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5 sm:gap-6">
                         <div className="flex-1 space-y-3">
                           {/* Badge & Date */}
                           <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-                            <span className="px-3 py-1 text-[10px] sm:text-xs font-syne font-bold uppercase tracking-wider text-[#EEDC9A] bg-[#EEDC9A]/10 border border-[#EEDC9A]/30 rounded-full shadow-sm">
+                            <StarBorder
+                              as="div"
+                              color="#EEDC9A"
+                              speed="4s"
+                              thickness={1}
+                              backgroundColor="rgba(15, 15, 20, 0.95)"
+                              borderColor="rgba(238, 220, 154, 0.35)"
+                              innerClassName="px-3 py-1 text-[10px] sm:text-xs font-syne font-bold uppercase tracking-wider text-[#EEDC9A] shadow-sm"
+                            >
                               {item.tag}
-                            </span>
+                            </StarBorder>
 
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.03] text-neutral-300 text-xs border border-white/10">
                               <ShieldCheck className="w-3.5 h-3.5 text-[#EEDC9A]" />
@@ -344,13 +353,21 @@ export const NewsPage: React.FC<NewsPageProps> = ({ onBackToHome }) => {
                     </div>
                   ) : (
                     /* DESKTOP GRID / MOBILE LIST RESPONSIVE CARD */
-                    <div className="p-5 sm:p-7 rounded-3xl border border-white/10 bg-neutral-950/80 hover:bg-neutral-900/90 hover:border-[#EEDC9A]/40 transition-all duration-300 shadow-xl hover:shadow-[0_10px_30px_rgba(0,0,0,0.8)] h-full flex flex-col justify-between group">
+                    <div className="p-5 sm:p-7 rounded-3xl border border-white/10 bg-[#0a0a0f] hover:bg-[#101017] hover:border-[#EEDC9A]/40 transition-all duration-300 shadow-2xl hover:shadow-[0_15px_35px_rgba(0,0,0,0.9)] h-full flex flex-col justify-between group">
                       <div>
                         {/* Badge & Date */}
                         <div className="flex flex-wrap items-center justify-between gap-2 mb-3 sm:mb-4">
-                          <span className="px-3 py-1 text-[10px] sm:text-[11px] font-syne font-bold uppercase tracking-wider text-[#EEDC9A] bg-[#EEDC9A]/10 border border-[#EEDC9A]/30 rounded-full shadow-sm">
+                          <StarBorder
+                            as="div"
+                            color="#EEDC9A"
+                            speed="4s"
+                            thickness={1}
+                            backgroundColor="rgba(15, 15, 20, 0.95)"
+                            borderColor="rgba(238, 220, 154, 0.35)"
+                            innerClassName="px-3 py-1 text-[10px] sm:text-[11px] font-syne font-bold uppercase tracking-wider text-[#EEDC9A] shadow-sm"
+                          >
                             {item.tag}
-                          </span>
+                          </StarBorder>
 
                           <div className="flex items-center gap-1.5 text-xs text-neutral-400 font-light">
                             <Calendar className="w-3.5 h-3.5 text-neutral-500" />

@@ -133,14 +133,14 @@ export const MediaPage: React.FC<MediaPageProps> = ({ onBackToHome }) => {
       </header>
 
       {/* Hero Header Section with MaskedHeading */}
-      <div className="relative pt-6 pb-2 px-4 max-w-5xl mx-auto text-center space-y-2">
+      <div className="relative pt-4 sm:pt-6 pb-1 sm:pb-2 px-4 max-w-4xl mx-auto text-center space-y-2 overflow-hidden">
         <MaskedHeading
           text="MÍDIAS"
           mediaType="video"
           src="/midias/1_midia.mp4"
           align="center"
           weight={900}
-          textScale={0.28}
+          textScale={0.155}
           tracking={-0.01}
           fillScale={1.3}
           parallax={24}
@@ -148,7 +148,7 @@ export const MediaPage: React.FC<MediaPageProps> = ({ onBackToHome }) => {
           reveal="rise"
           duration={1.2}
           trigger="mount"
-          className="font-black font-syne uppercase tracking-tight py-2 text-4xl sm:text-6xl lg:text-7xl"
+          className="font-black font-syne uppercase tracking-tight py-1"
         />
       </div>
 

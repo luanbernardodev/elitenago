@@ -6,6 +6,7 @@ import { ALL_NEWS } from '../data/newsData';
 import { ScrollFloat } from './ScrollFloat';
 import { BentoGrid, BentoGridItem } from './ui/bento-grid';
 import { InteractiveHoverButton } from '@/registry/magicui/interactive-hover-button';
+import { StarBorder } from './ui/StarBorder';
 
 interface NewsSectionProps {
   onOpenNewsPage?: () => void;
@@ -98,7 +99,7 @@ export const NewsSection: React.FC<NewsSectionProps> = ({ onOpenNewsPage }) => {
         </ScrollFloat>
       </div>
 
-      {/* Bento Grid News Layout - Optimized with High-Performance Glass Cards */}
+      {/* Bento Grid News Layout - Solid Dark & High Performance */}
       <BentoGrid className="max-w-7xl mx-auto gap-5 sm:gap-7">
         {latestNews.map((item, index) => {
           // Bento layout pattern: Item 0 is 2 cols, Item 1 is 1 col, Item 2 is 1 col, Item 3 is 2 cols
@@ -110,13 +111,21 @@ export const NewsSection: React.FC<NewsSectionProps> = ({ onOpenNewsPage }) => {
               className={isWide ? 'md:col-span-2' : 'md:col-span-1'}
               onClick={() => setSelectedNews(item)}
             >
-              <div className="p-6 sm:p-8 h-full flex flex-col justify-between group rounded-3xl border border-white/10 bg-neutral-950/80 hover:bg-neutral-900/90 hover:border-[#EEDC9A]/40 transition-all duration-300 shadow-xl hover:shadow-[0_10px_30px_rgba(0,0,0,0.8)] cursor-pointer">
+              <div className="p-6 sm:p-8 h-full flex flex-col justify-between group rounded-3xl border border-white/10 bg-[#0a0a0f] hover:bg-[#101017] hover:border-[#EEDC9A]/40 transition-all duration-300 shadow-2xl hover:shadow-[0_15px_35px_rgba(0,0,0,0.9)] cursor-pointer">
                 <div>
                   {/* Badge & Date */}
                   <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 mb-4">
-                    <span className="px-3 py-1 text-[10px] sm:text-[11px] font-syne font-bold uppercase tracking-wider text-[#EEDC9A] bg-[#EEDC9A]/10 border border-[#EEDC9A]/30 rounded-full shadow-sm">
+                    <StarBorder
+                      as="div"
+                      color="#EEDC9A"
+                      speed="4s"
+                      thickness={1}
+                      backgroundColor="rgba(15, 15, 20, 0.95)"
+                      borderColor="rgba(238, 220, 154, 0.35)"
+                      innerClassName="px-3 py-1 text-[10px] sm:text-[11px] font-syne font-bold uppercase tracking-wider text-[#EEDC9A] shadow-sm"
+                    >
                       {item.tag}
-                    </span>
+                    </StarBorder>
 
                     <div className="flex items-center gap-1.5 text-xs text-neutral-400 font-light">
                       <Calendar className="w-3.5 h-3.5 text-neutral-500" />
