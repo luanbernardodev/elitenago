@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import {
-  Heart,
   QrCode,
   CreditCard,
   CheckCircle2,
   X,
-  Building2,
   Sparkles,
   ShieldCheck,
   Bitcoin,
@@ -39,11 +37,11 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
     selectedAmount === 'custom' ? parseFloat(customAmount) || 0 : selectedAmount;
 
   const samplePixCode =
-    '00020126580014br.gov.bcb.pix0136doacao.asconcer@elitenago.org.br5204000053039865405' +
+    '00020126580014br.gov.bcb.pix0136doacao.ascomcer@elitenago.org.br5204000053039865405' +
     (currentAmountValue > 0 ? currentAmountValue.toFixed(2) : '50.00') +
-    '5802BR5925ELITE NAGO E ASCONCER6012JUIZ DE FORA62070503***6304B7A9';
+    '5802BR5925ELITE NAGO E ASCOMCER6012JUIZ DE FORA62070503***6304B7A9';
 
-  const btcAddress = 'bc1qelitenagoasconcerjuizdefora2026donation';
+  const btcAddress = 'bc1qelitenagoascomcerjuizdefora2026donation';
 
   const handleCopyPix = () => {
     navigator.clipboard.writeText(samplePixCode);
@@ -72,7 +70,7 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xl animate-fadeIn">
       {/* Compact Main Glass Dialog */}
-      <div className="glass-panel max-w-lg w-full rounded-3xl p-5 sm:p-7 relative border border-white/20 shadow-[0_20px_60px_rgba(0,0,0,0.8)] bg-neutral-950/95 backdrop-blur-2xl text-white my-auto overflow-hidden">
+      <div className="glass-panel max-w-lg w-full max-h-[92vh] overflow-y-auto rounded-3xl p-5 sm:p-6 relative border border-white/20 shadow-[0_20px_60px_rgba(0,0,0,0.8)] bg-neutral-950/95 backdrop-blur-2xl text-white my-auto custom-scrollbar">
         {/* Close Button */}
         <button
           onClick={resetAndClose}
@@ -85,12 +83,12 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
         {isSuccess ? (
           /* SUCCESS STATE */
           <div className="py-6 text-center space-y-5 animate-fadeIn">
-            <div className="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-400/60 flex items-center justify-center mx-auto text-amber-400 shadow-[0_0_25px_rgba(245,158,11,0.4)]">
+            <div className="w-16 h-16 rounded-full bg-[#EEDC9A]/20 border border-[#EEDC9A]/60 flex items-center justify-center mx-auto text-[#EEDC9A] shadow-[0_0_25px_rgba(238,220,154,0.35)]">
               <CheckCircle2 className="w-9 h-9" />
             </div>
 
             <div className="space-y-1.5">
-              <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider block">
+              <span className="text-[11px] font-bold text-[#EEDC9A] uppercase tracking-wider block">
                 Doação Registrada
               </span>
               <h3 className="text-2xl font-bold font-syne text-white">
@@ -101,12 +99,12 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
             <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/15 text-xs text-neutral-300 leading-relaxed font-light">
               <p>
                 Sua contribuição de{' '}
-                <strong className="text-amber-300 font-semibold">
+                <strong className="text-[#EEDC9A] font-semibold">
                   R$ {currentAmountValue.toFixed(2)}
                 </strong>{' '}
                 apoia diretamente o{' '}
                 <strong className="text-white font-medium">
-                  Hospital do Câncer de Juiz de Fora (ASCONCER)
+                  Hospital do Câncer de Juiz de Fora (ASCOMCER)
                 </strong>{' '}
                 e as oficinas culturais de capoeira infantil.
               </p>
@@ -122,38 +120,35 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
         ) : (
           /* MAIN CLEAN DONATION FORM */
           <div className="space-y-4">
-            {/* Header */}
-            <div className="flex items-center gap-3 pr-8 pb-3 border-b border-white/10">
-              <div className="w-9 h-9 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-                <Heart className="w-4 h-4 fill-amber-400/30" />
-              </div>
-              <div>
-                <h2 className="text-lg sm:text-xl font-bold font-syne text-white leading-tight">
-                  Faça sua <span className="text-gold-gradient">Doação</span>
-                </h2>
-                <p className="text-[11px] text-neutral-400 font-light">
-                  Iniciativa Solidária • Elite Nagô & ASCONCER
-                </p>
-              </div>
+            {/* Header without heart icon */}
+            <div className="pr-8 pb-3 border-b border-white/10">
+              <h2 className="text-xl sm:text-2xl font-bold font-syne text-white leading-tight">
+                Faça sua <span className="text-gold-gradient">Doação</span>
+              </h2>
+              <p className="text-[11px] text-neutral-400 font-light mt-0.5">
+                Iniciativa Solidária • Elite Nagô & ASCOMCER
+              </p>
             </div>
 
-            {/* Explanation Banner */}
-            <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center gap-2.5 text-xs text-neutral-300 leading-snug">
-              <Building2 className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>
-                Apoie o{' '}
-                <strong className="text-amber-300 font-medium">
-                  Hospital do Câncer (ASCONCER)
-                </strong>{' '}
-                e os projetos sociais de capoeira para crianças.
-              </span>
+            {/* Banner ASCOMCER & Description */}
+            <div className="space-y-2">
+              <div className="relative overflow-hidden rounded-2xl border border-[#EEDC9A]/20 shadow-md bg-neutral-900">
+                <img
+                  src="/img/ascomcer_doe.png"
+                  alt="Campanha Doe para a ASCOMCER"
+                  className="w-full h-auto object-cover rounded-2xl block"
+                />
+              </div>
+              <p className="text-xs text-neutral-300 leading-relaxed font-light px-1">
+                Parte da sua doação será destinada a milhares de pessoas que passam por tratamento de câncer na <strong className="text-[#EEDC9A] font-medium">ASCOMCER</strong> e crianças em situações de vulnerabilidade.
+              </p>
             </div>
 
             {/* Step 1: Select Amount */}
-            <div className="space-y-2">
+            <div className="space-y-2 pt-1">
               <div className="flex items-center justify-between text-xs font-medium text-neutral-300">
                 <span>1. Escolha o valor:</span>
-                <span className="text-amber-300 font-bold font-syne text-sm">
+                <span className="text-[#EEDC9A] font-bold font-syne text-sm">
                   R$ {currentAmountValue.toFixed(2)}
                 </span>
               </div>
@@ -171,8 +166,8 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
                       }}
                       className={`py-2 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer text-center ${
                         isSelected
-                          ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.4)] scale-105'
-                          : 'bg-white/[0.04] border border-white/10 text-neutral-300 hover:border-amber-400/40 hover:bg-amber-500/10 hover:text-white'
+                          ? 'bg-gradient-to-r from-[#F6E7B8] via-[#EED89F] to-[#E3C887] text-black font-extrabold shadow-[0_0_15px_rgba(238,220,154,0.35)] scale-105 border border-[#EEDC9A]/50'
+                          : 'bg-white/[0.04] border border-white/10 text-neutral-300 hover:border-[#EEDC9A]/40 hover:bg-[#EEDC9A]/10 hover:text-white'
                       }`}
                     >
                       R$ {amt}
@@ -185,8 +180,8 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
                   onClick={() => setSelectedAmount('custom')}
                   className={`py-2 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer text-center ${
                     selectedAmount === 'custom'
-                      ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.4)] scale-105'
-                      : 'bg-white/[0.04] border border-white/10 text-neutral-300 hover:border-amber-400/40 hover:bg-amber-500/10 hover:text-white'
+                      ? 'bg-gradient-to-r from-[#F6E7B8] via-[#EED89F] to-[#E3C887] text-black font-extrabold shadow-[0_0_15px_rgba(238,220,154,0.35)] scale-105 border border-[#EEDC9A]/50'
+                      : 'bg-white/[0.04] border border-white/10 text-neutral-300 hover:border-[#EEDC9A]/40 hover:bg-[#EEDC9A]/10 hover:text-white'
                   }`}
                 >
                   Outro
@@ -196,7 +191,7 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
               {/* Custom Input */}
               {selectedAmount === 'custom' && (
                 <div className="relative mt-2">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs text-amber-400 font-bold">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs text-[#EEDC9A] font-bold">
                     R$
                   </span>
                   <input
@@ -206,7 +201,7 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
                     value={customAmount}
                     onChange={(e) => setCustomAmount(e.target.value)}
                     placeholder="Digite o valor desejado"
-                    className="w-full pl-11 pr-4 py-2 rounded-full bg-black/60 border border-white/15 text-xs text-amber-100 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-all"
+                    className="w-full pl-11 pr-4 py-2 rounded-full bg-black/60 border border-white/15 text-xs text-[#F5E8C7] focus:outline-none focus:border-[#EEDC9A] focus:ring-1 focus:ring-[#EEDC9A]/50 transition-all"
                   />
                 </div>
               )}
@@ -224,7 +219,7 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
                   onClick={() => setPaymentMethod('pix')}
                   className={`py-2 rounded-full text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-300 cursor-pointer ${
                     paymentMethod === 'pix'
-                      ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.3)]'
+                      ? 'bg-gradient-to-r from-[#F6E7B8] via-[#EED89F] to-[#E3C887] text-black font-extrabold shadow-[0_0_15px_rgba(238,220,154,0.3)]'
                       : 'text-neutral-400 hover:text-white'
                   }`}
                 >
@@ -237,7 +232,7 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
                   onClick={() => setPaymentMethod('card')}
                   className={`py-2 rounded-full text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-300 cursor-pointer ${
                     paymentMethod === 'card'
-                      ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.3)]'
+                      ? 'bg-gradient-to-r from-[#F6E7B8] via-[#EED89F] to-[#E3C887] text-black font-extrabold shadow-[0_0_15px_rgba(238,220,154,0.3)]'
                       : 'text-neutral-400 hover:text-white'
                   }`}
                 >
@@ -250,7 +245,7 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
                   onClick={() => setPaymentMethod('bitcoin')}
                   className={`py-2 rounded-full text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-300 cursor-pointer ${
                     paymentMethod === 'bitcoin'
-                      ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.3)]'
+                      ? 'bg-gradient-to-r from-[#F6E7B8] via-[#EED89F] to-[#E3C887] text-black font-extrabold shadow-[0_0_15px_rgba(238,220,154,0.3)]'
                       : 'text-neutral-400 hover:text-white'
                   }`}
                 >
@@ -286,7 +281,7 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
                       <rect x="9" y="73" width="18" height="18" fill="#fff" rx="2" />
                       <rect x="12" y="76" width="12" height="12" fill="#000" rx="1" />
 
-                      <rect x="35" y="35" width="30" height="30" fill="#d4af37" rx="6" />
+                      <rect x="35" y="35" width="30" height="30" fill="#EEDC9A" rx="6" />
                       <text
                         x="50"
                         y="54"
@@ -305,7 +300,7 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
                   </div>
 
                   <div className="flex-1 w-full space-y-2.5 text-center sm:text-left">
-                    <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs text-amber-300 font-bold">
+                    <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs text-[#EEDC9A] font-bold">
                       <Sparkles className="w-3.5 h-3.5" />
                       <span>QR Code Pix Instantâneo</span>
                     </div>
@@ -353,7 +348,7 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
                   </div>
 
                   <div className="flex-1 w-full space-y-2 text-center sm:text-left">
-                    <span className="block text-xs text-amber-300 font-bold">
+                    <span className="block text-xs text-[#EEDC9A] font-bold">
                       Endereço Bitcoin (BTC):
                     </span>
                     <p className="text-[11px] font-mono text-neutral-300 break-all bg-black/60 p-2 rounded-xl border border-white/10">
@@ -385,7 +380,7 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
                         value={cardName}
                         onChange={(e) => setCardName(e.target.value)}
                         placeholder="NOME COMO NO CARTÃO"
-                        className="w-full px-3.5 py-2 rounded-xl bg-black/60 border border-white/15 text-xs text-amber-100 uppercase focus:outline-none focus:border-amber-400"
+                        className="w-full px-3.5 py-2 rounded-xl bg-black/60 border border-white/15 text-xs text-[#F5E8C7] uppercase focus:outline-none focus:border-[#EEDC9A]"
                       />
                     </div>
 
@@ -406,7 +401,7 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
                           setCardNumber(val);
                         }}
                         placeholder="0000 0000 0000 0000"
-                        className="w-full px-3.5 py-2 rounded-xl bg-black/60 border border-white/15 text-xs text-amber-100 focus:outline-none focus:border-amber-400"
+                        className="w-full px-3.5 py-2 rounded-xl bg-black/60 border border-white/15 text-xs text-[#F5E8C7] focus:outline-none focus:border-[#EEDC9A]"
                       />
                     </div>
                   </div>
@@ -430,7 +425,7 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
                           }
                         }}
                         placeholder="MM/AA"
-                        className="w-full px-3.5 py-2 rounded-xl bg-black/60 border border-white/15 text-xs text-amber-100 text-center focus:outline-none focus:border-amber-400"
+                        className="w-full px-3.5 py-2 rounded-xl bg-black/60 border border-white/15 text-xs text-[#F5E8C7] text-center focus:outline-none focus:border-[#EEDC9A]"
                       />
                     </div>
 
@@ -445,7 +440,7 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
                         value={cardCvv}
                         onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, ''))}
                         placeholder="123"
-                        className="w-full px-3.5 py-2 rounded-xl bg-black/60 border border-white/15 text-xs text-amber-100 text-center focus:outline-none focus:border-amber-400"
+                        className="w-full px-3.5 py-2 rounded-xl bg-black/60 border border-white/15 text-xs text-[#F5E8C7] text-center focus:outline-none focus:border-[#EEDC9A]"
                       />
                     </div>
                   </div>
@@ -465,7 +460,7 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
             {/* Footer */}
             <div className="flex items-center justify-between text-[11px] text-neutral-400 pt-1">
               <span className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                <ShieldCheck className="w-3.5 h-3.5 text-[#EEDC9A]" />
                 Transação Segura SSL
               </span>
               <span>Elite Nagô • Juiz de Fora - MG</span>
