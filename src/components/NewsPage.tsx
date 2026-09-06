@@ -509,20 +509,27 @@ export const NewsPage: React.FC<NewsPageProps> = ({ onBackToHome }) => {
                 >
                   <X className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
-
                 <div className="space-y-2.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full bg-[#EEDC9A]/15 text-[#EEDC9A] border border-[#EEDC9A]/30 text-[10px] sm:text-xs font-bold font-syne uppercase tracking-wider">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <StarBorder
+                      as="div"
+                      color="#EEDC9A"
+                      speed="4s"
+                      thickness={1}
+                      backgroundColor="rgba(15, 15, 20, 0.95)"
+                      borderColor="rgba(238, 220, 154, 0.35)"
+                      innerClassName="px-2.5 py-0.5 text-[10px] sm:text-xs font-syne font-bold uppercase tracking-wider text-[#EEDC9A]"
+                    >
                       {selectedNews.tag}
-                    </span>
+                    </StarBorder>
 
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/[0.04] text-neutral-300 text-[10px] sm:text-xs border border-white/10">
                       <ShieldCheck className="w-3 h-3 text-[#EEDC9A]" />
                       <span>{selectedNews.category}</span>
                     </span>
 
-                    <div className="flex items-center gap-1 text-[11px] sm:text-xs text-neutral-400 font-light ml-auto">
-                      <Calendar className="w-3 h-3 text-neutral-500" />
+                    <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-neutral-400 font-light">
+                      <Calendar className="w-3.5 h-3.5 text-neutral-500" />
                       <span>{selectedNews.date}</span>
                     </div>
                   </div>
