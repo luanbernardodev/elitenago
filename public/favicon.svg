@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="920" viewBox="0 0 920 920">
+  <defs>
+    <style>
+      .cls-1, .cls-2 {
+        font-size: 666.667px;
+        text-anchor: middle;
+        font-family: "Cinzel Decorative";
+      }
+
+      .cls-1 {
+        fill: #fff;
+      }
+
+      .cls-2 {
+        fill: #ceb562;
+      }
+    </style>
+  </defs>
+  <rect id="Retângulo_Arredondado_1" data-name="Retângulo Arredondado 1" x="19" y="26" width="881" height="867" rx="72" ry="72"/>
+  <text id="N" class="cls-1" x="451.078" y="664.267"><tspan x="451.078">N</tspan></text>
+  <text id="E" class="cls-2" x="364.078" y="736.267"><tspan x="364.078">E</tspan></text>
+</svg>
