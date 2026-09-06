@@ -25,7 +25,7 @@ const MEDIA_GALLERY_IMAGES = [
     alt: 'Mestre Pinheiro - Mestre Fundador'
   },
   {
-    src: 'https://canva.link/79tewh09ck5hwtl',
+    src: 'https://i.imgur.com/A46hzMt.jpeg',
     alt: 'Força, Disciplina e Tradição'
   },
   {
@@ -33,19 +33,23 @@ const MEDIA_GALLERY_IMAGES = [
     alt: 'Professor Dom Ruan - Elite Nagô'
   },
   {
-    src: 'https://canva.link/79tewh09ck5hwtl',
+    src: 'https://i.imgur.com/JtVhftz.jpeg',
     alt: 'Toques de Berimbau e Cantigas'
   },
   {
-    src: 'https://canva.link/79tewh09ck5hwtl',
+    src: 'https://i.imgur.com/E1qX9rC.jpeg',
     alt: 'Acrobacias, Floreios e Saltos'
   },
   {
-    src: 'https://canva.link/79tewh09ck5hwtl',
+    src: 'https://i.imgur.com/TOTCg4x.jpeg',
     alt: 'Cultura e Expressão Nagô'
   },
   {
-    src: 'https://canva.link/79tewh09ck5hwtl',
+    src: 'https://i.imgur.com/IiYz7yh.jpeg',
+    alt: 'Arte Marcial e Tradição Popular'
+  },
+  {
+    src: 'https://i.imgur.com/phPJ0Qh.jpeg',
     alt: 'Arte Marcial e Tradição Popular'
   }
 ];
