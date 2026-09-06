@@ -31,6 +31,57 @@ export const SoundboardSection: React.FC<SoundboardSectionProps> = ({ onOpenPlay
     volumeRef.current = volume;
   }, [volume]);
 
+  // Helper to ensure AudioContext is unlocked for iOS Safari
+  const getOrCreateAudioContext = (): AudioContext | null => {
+    try {
+      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        audioCtxRef.current = new AudioCtx();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      // Instant silent buffer play to unlock iOS audio engine hardware
+      const buffer = ctx.createBuffer(1, 1, 22050);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start(0);
+      return ctx;
+    } catch (e) {
+      console.warn('AudioContext init error:', e);
+      return null;
+    }
+  };
+
+  const playBeatSound = (ctx: AudioContext, freq: number) => {
+    try {
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const currentVol = Math.max(0.01, (volumeRef.current / 100) * 0.45);
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, now);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.5, now + 0.12);
+
+      gain.gain.setValueAtTime(currentVol, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.25);
+    } catch (err) {
+      console.warn('Oscillator error:', err);
+    }
+  };
+
   // Web Audio API playback
   const togglePlayTrack = (track: RhythmTrack) => {
     if (activeTrack?.id === track.id && isPlaying) {
@@ -43,48 +94,30 @@ export const SoundboardSection: React.FC<SoundboardSectionProps> = ({ onOpenPlay
     setIsPlaying(true);
     setPlaybackTime(0);
 
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      audioCtxRef.current = new AudioCtx();
+    const ctx = getOrCreateAudioContext();
+    if (!ctx) return;
 
-      let step = 0;
-      intervalRef.current = setInterval(() => {
-        if (!audioCtxRef.current) return;
-        const ctx = audioCtxRef.current;
-        if (ctx.state === 'suspended') {
-          ctx.resume();
-        }
-
-        const isBeat = track.pattern[step % track.pattern.length] === 1;
-
-        if (isBeat) {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          const currentVol = (volumeRef.current / 100) * 0.45;
-
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(track.freq, ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(track.freq * 1.5, ctx.currentTime + 0.12);
-
-          gain.gain.setValueAtTime(currentVol, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
-
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-
-          osc.start();
-          osc.stop(ctx.currentTime + 0.25);
-        }
-
-        step++;
-      }, 250);
-
-      timerRef.current = setInterval(() => {
-        setPlaybackTime((prev) => prev + 1);
-      }, 1000);
-    } catch (e) {
-      console.warn('Web Audio error:', e);
+    // Play first beat immediately on user click
+    if (track.pattern[0] === 1) {
+      playBeatSound(ctx, track.freq);
     }
+
+    let step = 1;
+    intervalRef.current = setInterval(() => {
+      if (!audioCtxRef.current) return;
+      const activeCtx = audioCtxRef.current;
+      const isBeat = track.pattern[step % track.pattern.length] === 1;
+
+      if (isBeat) {
+        playBeatSound(activeCtx, track.freq);
+      }
+
+      step++;
+    }, 250);
+
+    timerRef.current = setInterval(() => {
+      setPlaybackTime((prev) => prev + 1);
+    }, 1000);
   };
 
   const stopAudio = () => {
@@ -97,7 +130,9 @@ export const SoundboardSection: React.FC<SoundboardSectionProps> = ({ onOpenPlay
       timerRef.current = null;
     }
     if (audioCtxRef.current) {
-      audioCtxRef.current.close();
+      try {
+        audioCtxRef.current.close();
+      } catch {}
       audioCtxRef.current = null;
     }
     setIsPlaying(false);

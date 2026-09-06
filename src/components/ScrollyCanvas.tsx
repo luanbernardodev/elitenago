@@ -98,26 +98,38 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
     };
   }, []);
 
+  // Helper to find nearest loaded frame to avoid black screen flashes on iOS
+  const getAvailableImage = (index: number): HTMLImageElement | null => {
+    const direct = imagesRef.current[index];
+    if (direct && direct.complete && direct.naturalWidth > 0) {
+      return direct;
+    }
+    // Search nearest available frames if target index is still decoding
+    for (let offset = 1; offset <= 10; offset++) {
+      const prev = imagesRef.current[index - offset];
+      if (prev && prev.complete && prev.naturalWidth > 0) return prev;
+      const next = imagesRef.current[index + offset];
+      if (next && next.complete && next.naturalWidth > 0) return next;
+    }
+    return null;
+  };
+
   // Draw Frame function with Cover Math & ZOOM_FACTOR
   const drawFrame = (index: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+    const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
 
-    const img = imagesRef.current[index];
-    if (!img || !img.complete || img.naturalWidth === 0) return;
+    const img = getAvailableImage(index);
+    if (!img) return; // Do not clear frame if no image is ready (avoids disappearing/blinking)
 
     const width = canvas.width;
     const height = canvas.height;
 
-    // Clear background with solid dark tone
-    ctx.fillStyle = '#050505';
-    ctx.fillRect(0, 0, width, height);
-
     // Aspect ratio math for Object-Fit: Cover
-    const imgWidth = img.naturalWidth || img.width || 1920;
-    const imgHeight = img.naturalHeight || img.height || 1080;
+    const imgWidth = img.naturalWidth || 1920;
+    const imgHeight = img.naturalHeight || 1080;
     const imgAspect = imgWidth / imgHeight;
     const canvasAspect = width / height;
 
@@ -140,10 +152,13 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
     const offsetX = (width - renderWidth) / 2;
     const offsetY = (height - renderHeight) / 2;
 
+    // Clear background and draw frame
+    ctx.fillStyle = '#050505';
+    ctx.fillRect(0, 0, width, height);
     ctx.drawImage(img, offsetX, offsetY, renderWidth, renderHeight);
   };
 
-  // Resize Listener
+  // Resize Listener with Mobile DPR capping for iOS performance & memory stability
   useEffect(() => {
     let resizeTimer: any;
     const handleResize = () => {
@@ -152,9 +167,10 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
         const canvas = canvasRef.current;
         if (!canvas) return;
 
-        const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-        canvas.width = window.innerWidth * dpr;
-        canvas.height = window.innerHeight * dpr;
+        const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
+        canvas.width = Math.floor(window.innerWidth * dpr);
+        canvas.height = Math.floor(window.innerHeight * dpr);
 
         // Redraw current frame
         drawFrame(currentFrameRef.current);
@@ -164,9 +180,10 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
     // Initial setup
     const canvas = canvasRef.current;
     if (canvas) {
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
+      const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
+      canvas.width = Math.floor(window.innerWidth * dpr);
+      canvas.height = Math.floor(window.innerHeight * dpr);
       drawFrame(0);
     }
 
@@ -298,8 +315,14 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
       {/* Main Fullscreen Canvas with scale: 1.05 for Parallax Buffer */}
       <canvas
         ref={canvasRef}
-        className="fixed inset-0 w-full h-full pointer-events-none z-0 object-cover transform scale-105"
-        style={{ willChange: 'transform' }}
+        className="fixed inset-0 w-full h-full pointer-events-none z-0 object-cover"
+        style={{
+          willChange: 'transform',
+          transform: 'translate3d(0, 0, 0) scale(1.05)',
+          WebkitTransform: 'translate3d(0, 0, 0) scale(1.05)',
+          WebkitBackfaceVisibility: 'hidden',
+          backfaceVisibility: 'hidden',
+        }}
       />
     </>
   );

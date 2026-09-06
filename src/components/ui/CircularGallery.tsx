@@ -507,6 +507,7 @@ class App {
   start: number = 0;
   startY: number = 0;
   hasMoved: boolean = false;
+  isLockedHorizontal: boolean = false;
 
   constructor(
     container: HTMLElement,
@@ -636,6 +637,7 @@ class App {
   onTouchDown(e: MouseEvent | TouchEvent) {
     this.isDown = true;
     this.hasMoved = false;
+    this.isLockedHorizontal = false;
     this.scroll.position = this.scroll.current;
     this.start = 'touches' in e ? e.touches[0].clientX : e.clientX;
     this.startY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -647,9 +649,20 @@ class App {
     const y = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const dx = Math.abs(x - this.start);
     const dy = Math.abs(y - this.startY);
-    if (dx > 6 || dy > 6) {
+
+    if (dx > 4 || dy > 4) {
       this.hasMoved = true;
     }
+
+    // Directional locking: if user swipes horizontally, softly lock and prevent vertical scroll
+    if (!this.isLockedHorizontal && dx > 6 && dx > dy * 0.75) {
+      this.isLockedHorizontal = true;
+    }
+
+    if (this.isLockedHorizontal && 'touches' in e && e.cancelable) {
+      e.preventDefault();
+    }
+
     const distance = (this.start - x) * (this.scrollSpeed * 0.025);
     this.scroll.target = (this.scroll.position ?? 0) + distance;
   }
@@ -657,6 +670,7 @@ class App {
   onTouchUp(_e: MouseEvent | TouchEvent) {
     if (!this.isDown) return;
     this.isDown = false;
+    this.isLockedHorizontal = false;
     this.onCheck();
 
     // Only if the tap started inside this container and did not drag:
@@ -747,7 +761,7 @@ class App {
       this.container.addEventListener('wheel', this.boundOnWheel, { passive: true });
       this.container.addEventListener('mousedown', this.boundOnTouchDown);
       this.container.addEventListener('touchstart', this.boundOnTouchDown, { passive: true });
-      this.container.addEventListener('touchmove', this.boundOnTouchMove, { passive: true });
+      this.container.addEventListener('touchmove', this.boundOnTouchMove, { passive: false });
       this.container.addEventListener('touchend', this.boundOnTouchUp, { passive: true });
       this.container.addEventListener('keydown', this.boundOnKeyDown);
     }

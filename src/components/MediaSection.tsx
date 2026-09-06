@@ -75,7 +75,7 @@ export const MediaSection: React.FC<MediaSectionProps> = ({ onOpenMediaPage }) =
       </div>
 
       {/* Circular Gallery Container with Edge Fades */}
-      <div className="w-full h-[380px] sm:h-[460px] lg:h-[520px] relative overflow-hidden bg-transparent">
+      <div className="w-full h-[380px] sm:h-[460px] lg:h-[520px] relative overflow-hidden bg-transparent select-none touch-pan-y">
         {/* Left Side Smooth Fade */}
         <div className="absolute left-0 top-0 bottom-0 w-12 sm:w-28 lg:w-48 z-10 pointer-events-none bg-gradient-to-r from-[#050505] via-[#050505]/70 to-transparent" />
 
