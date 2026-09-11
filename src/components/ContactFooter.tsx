@@ -227,11 +227,11 @@ export const ContactFooter: React.FC = () => {
                   <StatefulButton
                     type="submit"
                     onClick={handleSendMessage}
-                    loadingText="Validando e Enviando..."
-                    successText="Solicitação Enviada com Sucesso!"
+                    loadingText="Enviando..."
+                    successText="Mensagem enviada com sucesso!"
                     className="group/btn relative w-full py-4 text-xs sm:text-sm font-bold uppercase tracking-widest shadow-md overflow-hidden"
                   >
-                    <span>Enviar Solicitação</span>
+                    <span>Enviar</span>
                     <BottomGradient />
                   </StatefulButton>
                 </div>

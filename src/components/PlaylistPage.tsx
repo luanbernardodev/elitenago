@@ -298,7 +298,7 @@ export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
             </button>
           </div>
         ) : (
-          <div className="bg-[#0a0a0e]/90 rounded-3xl border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden">
+          <div className="bg-black/60 backdrop-blur-md rounded-3xl border border-white/10 hover:border-[#EEDC9A]/30 shadow-2xl transition-all duration-300 overflow-hidden">
             {/* Table Column Headers (Desktop) */}
             <div className="grid grid-cols-12 gap-4 px-5 sm:px-8 py-3.5 border-b border-white/10 text-xs font-mono font-bold uppercase tracking-wider text-neutral-400">
               <div className="col-span-1 text-center">#</div>

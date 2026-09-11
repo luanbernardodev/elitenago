@@ -118,8 +118,8 @@ export const SoundboardSection: React.FC<SoundboardSectionProps> = ({ onOpenPlay
         </ScrollFloat>
       </div>
 
-      {/* Spotify-style Tracklist Container */}
-      <div className="max-w-5xl mx-auto bg-[#0a0a0f]/90 rounded-3xl border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.8)] backdrop-blur-2xl overflow-hidden">
+      {/* Spotify-style Tracklist Container with Glassmorphism */}
+      <div className="max-w-5xl mx-auto bg-black/60 backdrop-blur-md rounded-3xl border border-white/10 hover:border-[#EEDC9A]/30 shadow-2xl transition-all duration-300 overflow-hidden">
         {/* Table Column Headers */}
         <div className="grid grid-cols-12 gap-4 px-5 sm:px-8 py-4 border-b border-white/10 text-xs font-mono font-bold uppercase tracking-wider text-neutral-400">
           <div className="col-span-1 text-center">#</div>
