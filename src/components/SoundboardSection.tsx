@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, Music, Volume2, Volume1, Share2, Disc3 } from 'lucide-react';
+import { Play, Pause, Volume2, Volume1, Share2, WifiOff } from 'lucide-react';
 import { RhythmTrack } from '../types';
 import { ALL_RHYTHMS } from '../data/rhythmsData';
 import { ScrollFloat } from './ScrollFloat';
 import { InteractiveHoverButton } from '@/registry/magicui/interactive-hover-button';
 import { ElasticSlider } from './ElasticSlider';
 import { SpotifyPlayerModal } from './SpotifyPlayerModal';
+import { Skeleton } from './ui/skeleton';
+import { useNetworkStatus } from '@/lib/useNetworkStatus';
 
 import { playTrack, stopCurrentTrack, setGlobalVolume, seekCurrentTrack } from '@/lib/audioEngine';
 
@@ -16,6 +18,7 @@ interface SoundboardSectionProps {
 export const SoundboardSection: React.FC<SoundboardSectionProps> = ({ onOpenPlaylistPage }) => {
   // Top 4 initial featured rhythms
   const featuredRhythms = ALL_RHYTHMS.slice(0, 4);
+  const { isOnline } = useNetworkStatus();
 
   const [activeTrack, setActiveTrack] = useState<RhythmTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -120,20 +123,72 @@ export const SoundboardSection: React.FC<SoundboardSectionProps> = ({ onOpenPlay
 
       {/* Spotify-style Tracklist Container with Glassmorphism */}
       <div className="max-w-5xl mx-auto bg-black/60 backdrop-blur-md rounded-3xl border border-white/10 hover:border-[#EEDC9A]/30 shadow-2xl transition-all duration-300 overflow-hidden">
-        {/* 4 Tracks List */}
-        <div className="divide-y divide-white/5">
-          {featuredRhythms.map((track, idx) => {
-            const isCurrent = activeTrack?.id === track.id && isPlaying;
+        {/* Offline Banner Notification */}
+        {!isOnline && (
+          <div className="px-5 py-2.5 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between text-xs text-amber-200 animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <WifiOff className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
+              <span>Sem conexão de rede. Carregando faixas em cache...</span>
+            </div>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-bold">
+              OFFLINE
+            </span>
+          </div>
+        )}
 
-            return (
+        {/* 4 Tracks List / Skeleton */}
+        <div className="divide-y divide-white/5">
+          {!isOnline ? (
+            Array.from({ length: 4 }).map((_, index) => (
               <div
-                key={track.id}
-                onClick={() => handleTrackRowClick(track)}
-                className={`grid grid-cols-12 gap-4 px-5 sm:px-8 py-4 items-center transition-all duration-200 cursor-pointer group ${isCurrent
-                  ? 'bg-white/[0.08] text-white shadow-inner'
-                  : 'hover:bg-white/[0.04] text-neutral-300'
-                  }`}
+                key={index}
+                className="grid grid-cols-12 gap-4 px-5 sm:px-8 py-4 items-center"
               >
+                {/* Index Skeleton */}
+                <div className="col-span-1 flex items-center justify-center">
+                  <Skeleton className="h-3.5 w-3.5 rounded-full" />
+                </div>
+
+                {/* Track Thumbnail & Title */}
+                <div className="col-span-6 sm:col-span-4 flex items-center gap-3">
+                  <Skeleton className="h-10 w-10 shrink-0 rounded-xl" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-3.5 w-4/5 rounded" />
+                    <Skeleton className="h-2.5 w-3/5 rounded" />
+                  </div>
+                </div>
+
+                {/* Instrument / Info */}
+                <div className="hidden sm:block col-span-4 space-y-2">
+                  <Skeleton className="h-3 w-3/4 rounded" />
+                  <Skeleton className="h-2.5 w-1/2 rounded" />
+                </div>
+
+                {/* Spotify Action */}
+                <div className="hidden md:flex col-span-1 items-center justify-center">
+                  <Skeleton className="w-8 h-8 rounded-full" />
+                </div>
+
+                {/* Duration & Play Button */}
+                <div className="col-span-5 sm:col-span-3 md:col-span-2 flex items-center justify-end gap-2.5">
+                  <Skeleton className="h-3 w-8 rounded" />
+                  <Skeleton className="w-8 h-8 rounded-full" />
+                </div>
+              </div>
+            ))
+          ) : (
+            featuredRhythms.map((track, idx) => {
+              const isCurrent = activeTrack?.id === track.id && isPlaying;
+
+              return (
+                <div
+                  key={track.id}
+                  onClick={() => handleTrackRowClick(track)}
+                  className={`grid grid-cols-12 gap-4 px-5 sm:px-8 py-4 items-center transition-all duration-200 cursor-pointer group ${isCurrent
+                    ? 'bg-white/[0.08] text-white shadow-inner'
+                    : 'hover:bg-white/[0.04] text-neutral-300'
+                    }`}
+                >
                 {/* Index / Play Indicator */}
                 <div className="col-span-1 flex items-center justify-center">
                   {isCurrent ? (
@@ -154,12 +209,15 @@ export const SoundboardSection: React.FC<SoundboardSectionProps> = ({ onOpenPlay
 
                 {/* Track Title & Artist */}
                 <div className="col-span-6 sm:col-span-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 text-[#EEDC9A] group-hover:scale-105 transition-transform">
-                    {isCurrent ? (
-                      <Disc3 className="w-5 h-5 animate-spin" style={{ animationDuration: '4s' }} />
-                    ) : (
-                      <Music className="w-4 h-4" />
-                    )}
+                  <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <img
+                      src={track.cover || '/logos/en_thumb.png'}
+                      alt={track.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/logos/en_thumb.png';
+                      }}
+                    />
                   </div>
                   <div className="min-w-0 flex-1">
                     <h4
@@ -226,7 +284,7 @@ export const SoundboardSection: React.FC<SoundboardSectionProps> = ({ onOpenPlay
                 </div>
               </div>
             );
-          })}
+          }))}
         </div>
 
         {/* Global ElasticSlider Volume Controller (Desktop only) */}

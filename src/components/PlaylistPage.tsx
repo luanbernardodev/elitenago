@@ -4,12 +4,11 @@ import {
   Pause,
   ArrowLeft,
   SearchX,
-  Music,
-  Disc3,
   Share2,
   Maximize2,
   Volume1,
   Volume2,
+  WifiOff,
 } from 'lucide-react';
 import { RhythmTrack } from '../types';
 import { ALL_RHYTHMS } from '../data/rhythmsData';
@@ -18,6 +17,8 @@ import { StarBorder } from './ui/StarBorder';
 import { InteractiveHoverButton } from '@/registry/magicui/interactive-hover-button';
 import { ElasticSlider } from './ElasticSlider';
 import { SpotifyPlayerModal } from './SpotifyPlayerModal';
+import { Skeleton } from './ui/skeleton';
+import { useNetworkStatus } from '@/lib/useNetworkStatus';
 
 import { playTrack, stopCurrentTrack, setGlobalVolume, seekCurrentTrack } from '@/lib/audioEngine';
 
@@ -26,6 +27,7 @@ interface PlaylistPageProps {
 }
 
 export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
+  const { isOnline } = useNetworkStatus();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('TODOS');
   const [activeTrack, setActiveTrack] = useState<RhythmTrack | null>(null);
@@ -178,18 +180,15 @@ export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
       <div className="relative pt-10 sm:pt-16 pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="p-6 sm:p-10 rounded-3xl bg-gradient-to-br from-[#181820]/90 via-[#0d0d12]/95 to-[#08080a] border border-white/15 shadow-2xl backdrop-blur-2xl flex flex-col md:flex-row items-center md:items-end gap-6 sm:gap-8">
           {/* Playlist Cover Art */}
-          <div className="w-40 h-40 sm:w-52 sm:h-52 rounded-2xl bg-gradient-to-br from-neutral-800 to-neutral-950 border border-white/20 shadow-[0_10px_40px_rgba(0,0,0,0.8)] flex items-center justify-center shrink-0 relative overflow-hidden group">
+          <div className="w-40 h-40 sm:w-52 sm:h-52 rounded-2xl bg-neutral-950 border border-white/20 shadow-[0_10px_40px_rgba(0,0,0,0.8)] flex items-center justify-center shrink-0 relative overflow-hidden group">
             <img
-              src="/berimbau.png"
-              alt="Berimbau Capoeira"
-              className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-500"
+              src={activeTrack?.cover || '/logos/en_thumb.png'}
+              alt={activeTrack?.name || 'Playlist Elite Nagô'}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               onError={(e) => {
-                (e.target as HTMLElement).style.display = 'none';
+                (e.target as HTMLImageElement).src = '/logos/en_thumb.png';
               }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-center justify-center">
-              <Disc3 className={`w-16 h-16 text-[#EEDC9A] ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '4s' }} />
-            </div>
           </div>
 
           {/* Playlist Info */}
@@ -277,7 +276,52 @@ export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
 
       {/* Main Spotify Tracklist Table */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {filteredTracks.length === 0 ? (
+        {!isOnline ? (
+          <div className="bg-black/60 backdrop-blur-md rounded-3xl border border-white/10 hover:border-[#EEDC9A]/30 shadow-2xl transition-all duration-300 overflow-hidden">
+            {/* Offline Notification */}
+            <div className="px-5 sm:px-8 py-3 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between text-xs text-amber-200 animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <WifiOff className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
+                <span>Sem conexão de rede. Carregando faixas em cache...</span>
+              </div>
+              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-bold">
+                OFFLINE
+              </span>
+            </div>
+
+            {/* Shimmer Skeleton Track Rows */}
+            <div className="divide-y divide-white/5">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="grid grid-cols-12 gap-4 px-5 sm:px-8 py-3.5 sm:py-4 items-center"
+                >
+                  <div className="col-span-1 flex items-center justify-center">
+                    <Skeleton className="h-3.5 w-3.5 rounded-full" />
+                  </div>
+                  <div className="col-span-6 sm:col-span-4 flex items-center gap-3">
+                    <Skeleton className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-3.5 w-4/5 rounded" />
+                      <Skeleton className="h-2.5 w-3/5 rounded" />
+                    </div>
+                  </div>
+                  <div className="hidden sm:block col-span-4 space-y-2">
+                    <Skeleton className="h-3 w-3/4 rounded" />
+                    <Skeleton className="h-2.5 w-1/2 rounded" />
+                  </div>
+                  <div className="hidden md:flex col-span-1 items-center justify-center">
+                    <Skeleton className="w-8 h-8 rounded-full" />
+                  </div>
+                  <div className="col-span-5 sm:col-span-3 md:col-span-2 flex items-center justify-end gap-2.5">
+                    <Skeleton className="h-3 w-8 rounded" />
+                    <Skeleton className="w-8 h-8 rounded-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : filteredTracks.length === 0 ? (
           <div className="py-20 text-center space-y-4 bg-neutral-950/60 rounded-3xl border border-dashed border-white/10 p-8">
             <div className="w-16 h-16 mx-auto rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-[#EEDC9A]">
               <SearchX className="w-8 h-8" />
@@ -333,8 +377,15 @@ export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
 
                     {/* Title & Artist/Category */}
                     <div className="col-span-6 sm:col-span-4 flex items-center gap-3">
-                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 text-[#EEDC9A]">
-                        <Music className="w-4 h-4" />
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center shrink-0">
+                        <img
+                          src={track.cover || '/logos/en_thumb.png'}
+                          alt={track.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/logos/en_thumb.png';
+                          }}
+                        />
                       </div>
                       <div className="min-w-0 flex-1">
                         <h4
@@ -424,8 +475,15 @@ export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
           >
             {/* Left: Track Info */}
             <div className="flex items-center gap-3 min-w-0 flex-1 sm:flex-initial">
-              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0 text-[#EEDC9A]">
-                <Disc3 className={`w-6 h-6 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '4s' }} />
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/10 border border-white/15 overflow-hidden flex items-center justify-center shrink-0">
+                <img
+                  src={activeTrack.cover || '/logos/en_thumb.png'}
+                  alt={activeTrack.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/logos/en_thumb.png';
+                  }}
+                />
               </div>
               <div className="min-w-0">
                 <h5 className="text-xs sm:text-sm font-bold font-syne text-white truncate group-hover:text-[#EEDC9A] transition-colors">

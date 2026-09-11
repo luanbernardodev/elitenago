@@ -129,7 +129,7 @@ export const Navbar: React.FC<NavbarProps> = ({ visible = true, className = '' }
   ];
 
   const mobileSocialItems: StaggeredMenuSocialItem[] = [
-    { label: 'Instagram', link: 'https://instagram.com' },
+    { label: 'Instagram', link: 'https://instagram.com/elite_nago_oficial' },
     { label: 'WhatsApp', link: 'https://wa.me/5511999999999' },
     { label: 'YouTube', link: 'https://youtube.com' },
   ];

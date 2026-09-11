@@ -42,6 +42,7 @@ export interface RhythmTrack {
   type: string;
   category?: string;
   artist?: string;
+  cover?: string;
   duration?: string;
   audioSrc?: string;
   freq: number; // Frequency for audio synthesis simulator

@@ -12,7 +12,6 @@ import {
   Shuffle,
   Volume1,
   Volume2,
-  Disc3,
 } from 'lucide-react';
 import { RhythmTrack } from '../types';
 import { ElasticSlider } from './ElasticSlider';
@@ -148,9 +147,17 @@ export const SpotifyPlayerModal: React.FC<SpotifyPlayerModalProps> = ({
               <div className="absolute inset-12 rounded-full border border-white/10" />
             </div>
 
-            {/* Center Berimbau Badge / Disc Icon */}
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[#0a0a0d] border-2 border-[#EEDC9A]/50 flex items-center justify-center shadow-inner relative z-10">
-              <Disc3 className={`w-9 h-9 sm:w-10 sm:h-10 text-[#EEDC9A] ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '3s' }} />
+            {/* Center Berimbau Badge / Thumbnail Artwork */}
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[#0a0a0d] border-2 border-[#EEDC9A]/50 overflow-hidden flex items-center justify-center shadow-inner relative z-10">
+              <img
+                src={track.cover || '/logos/en_thumb.png'}
+                alt={track.name}
+                className={`w-full h-full object-cover ${isPlaying ? 'animate-spin' : ''}`}
+                style={{ animationDuration: '8s' }}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/logos/en_thumb.png';
+                }}
+              />
             </div>
           </div>
         </div>
