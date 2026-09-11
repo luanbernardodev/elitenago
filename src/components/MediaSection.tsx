@@ -10,43 +10,43 @@ interface MediaSectionProps {
 const CIRCULAR_GALLERY_ITEMS = [
   {
     image: 'https://i.imgur.com/A46hzMt.jpeg',
-    text: 'Levando a Capoeira para o mundo'
+    text: ''
   },
   {
     image: '/img/cm_soldado.jpg',
-    text: 'Contramestre Soldado'
+    text: ''
   },
   {
     image: 'https://i.imgur.com/RWa2XaP.jpeg',
-    text: 'Treino e Movimento'
+    text: ''
   },
   {
     image: '/img/mestre_pinheiro.jpg',
-    text: 'Mestre Pinheiro'
+    text: ''
   },
   {
     image: 'https://i.imgur.com/TOTCg4x.jpeg',
-    text: 'Musicalidade'
+    text: ''
   },
   {
     image: '/img/professor_dom_ruan.jpeg',
-    text: 'Professor Dom Ruan'
+    text: ''
   },
   {
     image: 'https://i.imgur.com/IiYz7yh.jpeg',
-    text: 'Toques de Berimbau'
+    text: ''
   },
   {
-    image: 'https://i.imgur.com/phPJ0Qh.jpeg',
-    text: 'Núcleos'
+    image: '/img/phPJ0Qh.jpeg',
+    text: ''
   },
   {
     image: 'https://i.imgur.com/N3HsBOJ.jpeg',
-    text: 'Elite Nagô nas Escolas'
+    text: ''
   },
   {
     image: 'https://i.imgur.com/JtVhftz.jpeg',
-    text: 'Arte Marcial'
+    text: ''
   }
 ];
 

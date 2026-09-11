@@ -40,7 +40,7 @@ export const Navbar: React.FC<NavbarProps> = ({ visible = true, className = '' }
       submenu: [
         {
           name: 'Todas as Mídias',
-          description: 'Galeria 3D DomeGallery em nova aba',
+          description: 'Galeria Completa',
           link: '?view=midias',
           target: '_blank',
         },
@@ -76,9 +76,9 @@ export const Navbar: React.FC<NavbarProps> = ({ visible = true, className = '' }
     },
     { label: 'Mídias', link: '#midias', ariaLabel: 'Galeria de Mídias' },
     {
-      label: 'Todas as Mídias (3D)',
+      label: 'Todas as Mídias',
       link: '?view=midias',
-      ariaLabel: 'Galeria 3D Completa de Mídias em Nova Aba',
+      ariaLabel: 'Galeria completa',
       onClick: () => {
         window.open('?view=midias', '_blank');
       },

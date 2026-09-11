@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Share2, Check } from 'lucide-react';
 import { DomeGallery } from './ui/DomeGallery';
-import { MaskedHeading } from './ui/MaskedHeading';
 
 interface MediaPageProps {
   onBackToHome?: () => void;
@@ -63,8 +62,8 @@ export const MediaPage: React.FC<MediaPageProps> = ({ onBackToHome }) => {
 
   const handleShare = async () => {
     const shareData = {
-      title: 'Mídias Elite - Galeria 3D',
-      text: 'Confira a galeria esférica 3D com fotos, mestres e momentos do Grupo Elite Nagô!',
+      title: 'Mídias Elite - Galeria',
+      text: 'Confira a galeria com fotos, mestres e momentos do Grupo Elite Nagô!',
       url: window.location.href,
     };
 
@@ -132,29 +131,9 @@ export const MediaPage: React.FC<MediaPageProps> = ({ onBackToHome }) => {
         </div>
       </header>
 
-      {/* Hero Header Section with MaskedHeading */}
-      <div className="relative pt-4 sm:pt-6 pb-1 sm:pb-2 px-4 max-w-4xl mx-auto text-center space-y-2 overflow-hidden">
-        <MaskedHeading
-          text="MÍDIAS"
-          mediaType="video"
-          src="/midias/1_midia.mp4"
-          align="center"
-          weight={900}
-          textScale={0.155}
-          tracking={-0.01}
-          fillScale={1.3}
-          parallax={24}
-          drift={16}
-          reveal="rise"
-          duration={1.2}
-          trigger="mount"
-          className="font-black font-syne uppercase tracking-tight py-1"
-        />
-      </div>
-
       {/* Full-Width 3D Dome Gallery Container Filling Edge-to-Edge */}
       <main className="flex-1 w-full relative overflow-hidden bg-transparent pb-4">
-        <div className="w-full h-[calc(100vh-170px)] min-h-[520px] sm:min-h-[640px] relative overflow-hidden bg-transparent">
+        <div className="w-full h-[calc(100vh-80px)] min-h-[560px] sm:min-h-[680px] relative overflow-hidden bg-transparent">
           <DomeGallery
             images={MEDIA_GALLERY_IMAGES}
             fit={0.65}

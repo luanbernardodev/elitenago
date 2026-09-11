@@ -20,7 +20,7 @@ import { InteractiveHoverButton } from '@/registry/magicui/interactive-hover-but
 import { ElasticSlider } from './ElasticSlider';
 import { SpotifyPlayerModal } from './SpotifyPlayerModal';
 
-import { playRhythmPulse, unlockAudio } from '@/lib/audioEngine';
+import { playTrack, stopCurrentTrack, setGlobalVolume, seekCurrentTrack } from '@/lib/audioEngine';
 
 interface PlaylistPageProps {
   onBackToHome?: () => void;
@@ -36,12 +36,8 @@ export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
   const [playbackTime, setPlaybackTime] = useState<number>(0);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
-  const intervalRef = useRef<any>(null);
-  const timerRef = useRef<any>(null);
-  const volumeRef = useRef<number>(70);
-
   useEffect(() => {
-    volumeRef.current = volume;
+    setGlobalVolume(volume);
   }, [volume]);
 
   // Categories list
@@ -71,53 +67,31 @@ export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
 
   const togglePlayTrack = (track: RhythmTrack) => {
     if (activeTrack?.id === track.id && isPlaying) {
-      stopAudio();
+      stopCurrentTrack();
+      setIsPlaying(false);
       return;
     }
 
-    stopAudio();
-    unlockAudio();
     setActiveTrack(track);
     setIsPlaying(true);
     setPlaybackTime(0);
 
-    // Play first beat immediately on user click/tap
-    if (track.pattern[0] === 1) {
-      playRhythmPulse(track.freq, volumeRef.current);
-    }
-
-    let step = 1;
-    intervalRef.current = setInterval(() => {
-      const isBeat = track.pattern[step % track.pattern.length] === 1;
-
-      if (isBeat) {
-        playRhythmPulse(track.freq, volumeRef.current);
-      }
-
-      step++;
-    }, 250);
-
-    // Playback progress ticker
-    timerRef.current = setInterval(() => {
-      setPlaybackTime((prev) => prev + 1);
-    }, 1000);
+    playTrack(
+      track,
+      volume,
+      (sec) => setPlaybackTime(sec),
+      () => handleNextTrack()
+    );
   };
 
-  const stopAudio = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    setIsPlaying(false);
+  const handleSeek = (time: number) => {
+    setPlaybackTime(time);
+    seekCurrentTrack(time);
   };
 
   useEffect(() => {
     return () => {
-      stopAudio();
+      stopCurrentTrack();
     };
   }, []);
 
@@ -138,7 +112,7 @@ export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
   };
 
   const handleGoBack = () => {
-    stopAudio();
+    stopCurrentTrack();
     if (onBackToHome) {
       onBackToHome();
     } else {
@@ -527,7 +501,7 @@ export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
         volume={volume}
         onVolumeChange={setVolume}
         playbackTime={playbackTime}
-        onSeek={(time) => setPlaybackTime(time)}
+        onSeek={handleSeek}
       />
     </div>
   );

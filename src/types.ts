@@ -43,6 +43,7 @@ export interface RhythmTrack {
   category?: string;
   artist?: string;
   duration?: string;
+  audioSrc?: string;
   freq: number; // Frequency for audio synthesis simulator
   pattern: number[]; // Rhythm beat pattern
 }
