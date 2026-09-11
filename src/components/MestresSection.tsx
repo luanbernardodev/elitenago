@@ -52,18 +52,18 @@ export const MestresSection: React.FC = () => {
       {/* Section Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center mb-8">
         {/* Left Editorial History & Mission */}
-        <div className="lg:col-span-6 space-y-6">
-          <div className="mb-4 sm:mb-6">
-            <ScrollFloat containerClassName="text-2xl sm:text-4xl lg:text-5xl font-black font-syne text-white uppercase tracking-tight leading-[1.2] block">
+        <div className="lg:col-span-6 space-y-4 sm:space-y-6 relative rounded-2xl p-5 sm:p-6 lg:p-0 bg-black/60 lg:bg-transparent backdrop-blur-md lg:backdrop-blur-none border border-white/10 lg:border-none shadow-2xl lg:shadow-none">
+          <div className="mb-2 sm:mb-6">
+            <ScrollFloat containerClassName="text-2xl sm:text-4xl lg:text-5xl font-black font-syne text-white uppercase tracking-tight leading-[1.2] block drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)]">
               A Arte da Capoeira Nagô
             </ScrollFloat>
           </div>
 
-          <p className="text-xs sm:text-base text-neutral-300 font-light leading-relaxed">
+          <p className="text-sm sm:text-base text-neutral-200 lg:text-neutral-300 font-light leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
             O Grupo Elite Nagô nasceu com a missão de honrar as raízes afro-brasileiras, cultivando o respeito, a fraternidade, a disciplina e a máxima expressão corporal da Capoeira.
           </p>
 
-          <p className="text-xs sm:text-sm text-neutral-400 font-light leading-relaxed">
+          <p className="text-xs sm:text-sm text-neutral-300 lg:text-neutral-400 font-light leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
             Nossos treinos integram a preparação física de alto rendimento, o domínio musical e a filosofia de vida transmitida através de gerações de mestres.
           </p>
         </div>

@@ -3,7 +3,6 @@ import { Clock, UserCheck } from 'lucide-react';
 import { AcademyUnit } from '../types';
 import { ScrollFloat } from './ScrollFloat';
 import { InteractiveHoverButton } from '@/registry/magicui/interactive-hover-button';
-import { BorderGlow } from './BorderGlow';
 import { StarBorder } from './ui/StarBorder';
 
 const ACADEMIES: AcademyUnit[] = [
@@ -67,13 +66,7 @@ export const AcademySection: React.FC = () => {
 
           return (
             <div key={unit.id} className="h-full w-full flex flex-col items-center justify-center mx-auto">
-              <BorderGlow
-                borderRadius={24}
-                glowColor="45 50 65"
-                backgroundColor="#08080a"
-                colors={['#F6E7B8', '#EED89F', '#E3C887']}
-                className="p-5 sm:p-7 h-full w-full flex flex-col justify-between"
-              >
+              <div className="p-5 sm:p-7 h-full w-full flex flex-col justify-between bg-black/60 backdrop-blur-md border border-white/10 hover:border-[#EEDC9A]/40 rounded-3xl shadow-2xl hover:bg-black/75 transition-all duration-300">
                 <div className="flex flex-col flex-1 w-full">
                   {/* Top Tag & Neighborhood */}
                   <div className="flex items-center justify-between gap-2 mb-4 h-8 min-w-0 w-full">
@@ -118,13 +111,13 @@ export const AcademySection: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Google Maps Direct Clickable Preview Box (Normal Colors & Direct Pin Navigation) */}
+                  {/* Google Maps Direct Clickable Preview Box */}
                   <a
                     href={directMapsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     title={`Abrir localização no Google Maps: ${unit.address}`}
-                    className="relative block rounded-2xl overflow-hidden border border-white/15 group/map mb-5 h-44 w-full bg-neutral-900 shadow-lg hover:border-[#EEDC9A]/50 hover:shadow-[0_0_25px_rgba(238,220,154,0.2)] transition-all duration-300 shrink-0 cursor-pointer"
+                    className="relative block rounded-2xl overflow-hidden border border-white/10 hover:border-[#EEDC9A]/40 group/map mb-5 h-44 w-full bg-neutral-900/80 shadow-lg hover:shadow-[0_0_25px_rgba(238,220,154,0.2)] transition-all duration-300 shrink-0 cursor-pointer"
                   >
                     <iframe
                       title={`Mapa ${unit.address}`}
@@ -148,7 +141,7 @@ export const AcademySection: React.FC = () => {
                     </InteractiveHoverButton>
                   </a>
                 </div>
-              </BorderGlow>
+              </div>
             </div>
           );
         })}

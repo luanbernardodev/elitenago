@@ -290,7 +290,7 @@ export const NewsPage: React.FC<NewsPageProps> = ({ onBackToHome }) => {
                 >
                   {/* MOBILE & DESKTOP LIST LAYOUT */}
                   {desktopViewMode === 'list' ? (
-                    <div className="p-5 sm:p-7 rounded-2xl border border-white/10 bg-[#0a0a0f] hover:bg-[#101017] hover:border-[#EEDC9A]/40 transition-all duration-300 shadow-2xl hover:shadow-[0_15px_35px_rgba(0,0,0,0.9)] group">
+                    <div className="p-5 sm:p-7 rounded-2xl border border-white/10 bg-black/60 backdrop-blur-md hover:bg-black/75 hover:border-[#EEDC9A]/40 transition-all duration-300 shadow-2xl hover:shadow-[0_15px_35px_rgba(0,0,0,0.9)] group">
                       <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5 sm:gap-6">
                         <div className="flex-1 space-y-3">
                           {/* Badge & Date */}
@@ -353,7 +353,7 @@ export const NewsPage: React.FC<NewsPageProps> = ({ onBackToHome }) => {
                     </div>
                   ) : (
                     /* DESKTOP GRID / MOBILE LIST RESPONSIVE CARD */
-                    <div className="p-5 sm:p-7 rounded-3xl border border-white/10 bg-[#0a0a0f] hover:bg-[#101017] hover:border-[#EEDC9A]/40 transition-all duration-300 shadow-2xl hover:shadow-[0_15px_35px_rgba(0,0,0,0.9)] h-full flex flex-col justify-between group">
+                    <div className="p-5 sm:p-7 rounded-3xl border border-white/10 bg-black/60 backdrop-blur-md hover:bg-black/75 hover:border-[#EEDC9A]/40 transition-all duration-300 shadow-2xl hover:shadow-[0_15px_35px_rgba(0,0,0,0.9)] h-full flex flex-col justify-between group">
                       <div>
                         {/* Badge & Date */}
                         <div className="flex flex-wrap items-center justify-between gap-2 mb-3 sm:mb-4">

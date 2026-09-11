@@ -111,7 +111,7 @@ export const NewsSection: React.FC<NewsSectionProps> = ({ onOpenNewsPage }) => {
               className={isWide ? 'md:col-span-2' : 'md:col-span-1'}
               onClick={() => setSelectedNews(item)}
             >
-              <div className="p-6 sm:p-8 h-full flex flex-col justify-between group rounded-3xl border border-white/10 bg-[#0a0a0f] hover:bg-[#101017] hover:border-[#EEDC9A]/40 transition-all duration-300 shadow-2xl hover:shadow-[0_15px_35px_rgba(0,0,0,0.9)] cursor-pointer">
+              <div className="p-6 sm:p-8 h-full flex flex-col justify-between group rounded-3xl border border-white/10 bg-black/60 backdrop-blur-md hover:bg-black/75 hover:border-[#EEDC9A]/40 transition-all duration-300 shadow-2xl hover:shadow-[0_15px_35px_rgba(0,0,0,0.9)] cursor-pointer">
                 <div>
                   {/* Badge & Date */}
                   <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 mb-4">

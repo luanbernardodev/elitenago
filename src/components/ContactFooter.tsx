@@ -1,26 +1,122 @@
 import React, { useState } from 'react';
-import { Phone, Mail, MapPin, Instagram, Youtube } from 'lucide-react';
+import { Phone, Mail, MapPin, Instagram, Youtube, AlertCircle } from 'lucide-react';
 import { Button as StatefulButton } from '@/components/ui/stateful-button';
-import { BorderGlow } from './BorderGlow';
+import { Label } from './ui/label';
+import { Input } from './ui/input';
+import { Textarea } from './ui/textarea';
+import { cn } from '@/lib/utils';
+import {
+  sanitizeName,
+  sanitizeEmail,
+  sanitizePhone,
+  sanitizeMessage,
+} from '@/lib/security';
+
+const LabelInputContainer = ({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => {
+  return (
+    <div className={cn('flex w-full flex-col space-y-1.5', className)}>
+      {children}
+    </div>
+  );
+};
+
+const BottomGradient = () => {
+  return (
+    <>
+      <span className="absolute inset-x-0 -bottom-px block h-px w-full bg-gradient-to-r from-transparent via-[#EEDC9A] to-transparent opacity-0 transition duration-500 group-hover/btn:opacity-100" />
+      <span className="absolute inset-x-10 -bottom-px mx-auto block h-px w-1/2 bg-gradient-to-r from-transparent via-[#EED89F] to-transparent opacity-0 blur-sm transition duration-500 group-hover/btn:opacity-100" />
+    </>
+  );
+};
 
 export const ContactFooter: React.FC = () => {
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    message: '',
+  });
 
-  const handleSendMessage = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    // Check if HTML form is valid
-    const form = e.currentTarget.closest('form');
-    if (form && !form.checkValidity()) {
-      form.reportValidity();
-      throw new Error('Preencha os campos obrigatórios.');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { sanitized } = sanitizeName(e.target.value);
+    setFormData((prev) => ({ ...prev, name: sanitized }));
+    if (errorMessage) setErrorMessage(null);
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { sanitized } = sanitizePhone(e.target.value);
+    setFormData((prev) => ({ ...prev, phone: sanitized }));
+    if (errorMessage) setErrorMessage(null);
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { sanitized } = sanitizeEmail(e.target.value);
+    setFormData((prev) => ({ ...prev, email: sanitized }));
+    if (errorMessage) setErrorMessage(null);
+  };
+
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const { sanitized } = sanitizeMessage(e.target.value);
+    setFormData((prev) => ({ ...prev, message: sanitized }));
+    if (errorMessage) setErrorMessage(null);
+  };
+
+  const handleSendMessage = async () => {
+    setErrorMessage(null);
+
+    // Strict sanitization & validation
+    const nameValidation = sanitizeName(formData.name);
+    const emailValidation = sanitizeEmail(formData.email);
+    const phoneValidation = sanitizePhone(formData.phone);
+    const messageValidation = sanitizeMessage(formData.message);
+
+    if (!nameValidation.isValid) {
+      setErrorMessage('Por favor, digite um nome válido (mínimo 2 caracteres).');
+      throw new Error('Nome inválido.');
     }
 
+    if (!phoneValidation.isValid) {
+      setErrorMessage('Por favor, informe um telefone/WhatsApp válido com DDD.');
+      throw new Error('Telefone inválido.');
+    }
+
+    if (!emailValidation.isValid) {
+      setErrorMessage('Por favor, informe um e-mail válido.');
+      throw new Error('E-mail inválido.');
+    }
+
+    if (!messageValidation.isValid) {
+      setErrorMessage('Por favor, digite uma mensagem válida.');
+      throw new Error('Mensagem inválida.');
+    }
+
+    // Payload sanitizado e imune a scripts e SQL injection
+    const cleanPayload = {
+      name: nameValidation.sanitized,
+      email: emailValidation.sanitized,
+      phone: phoneValidation.sanitized,
+      message: messageValidation.sanitized,
+      sentAt: new Date().toISOString(),
+    };
+
+    console.log('Secure Contact Form Payload:', cleanPayload);
+
     // Simulate sending message API
-    await new Promise((resolve) => setTimeout(resolve, 2500));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Clear form after success
     setTimeout(() => {
       setFormData({ name: '', email: '', phone: '', message: '' });
-    }, 3000);
+      setErrorMessage(null);
+    }, 2500);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -29,15 +125,9 @@ export const ContactFooter: React.FC = () => {
 
   return (
     <footer id="contato" className="relative py-12 sm:py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto z-10">
-      {/* Contact Section Box with BorderGlow */}
+      {/* Contact Section Box with Glassmorphism & Light Refined Border */}
       <div className="mb-12 sm:mb-16">
-        <BorderGlow
-          borderRadius={28}
-          glowColor="45 50 65"
-          backgroundColor="#08080a"
-          colors={['#F6E7B8', '#EED89F', '#E3C887']}
-          className="p-5 sm:p-12"
-        >
+        <div className="bg-black/60 backdrop-blur-md border border-white/10 hover:border-[#EEDC9A]/30 rounded-3xl p-6 sm:p-12 shadow-2xl transition-all duration-300">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             {/* Form Info */}
             <div className="lg:col-span-5 space-y-4 sm:space-y-6">
@@ -66,74 +156,89 @@ export const ContactFooter: React.FC = () => {
               </div>
             </div>
 
-            {/* Form Inputs */}
+            {/* Aceternity Form Inputs */}
             <div className="lg:col-span-7">
               <form onSubmit={handleSubmit} className="space-y-4">
+                {errorMessage && (
+                  <div className="flex items-center gap-2 p-3.5 rounded-xl bg-red-950/60 border border-red-500/30 text-red-300 text-xs font-mono">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                    <span>{errorMessage}</span>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-mono text-neutral-300 mb-1">Nome Completo</label>
-                    <input
+                  <LabelInputContainer>
+                    <Label htmlFor="name">Nome Completo</Label>
+                    <Input
+                      id="name"
                       type="text"
                       required
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      onChange={handleNameChange}
                       placeholder="Seu nome"
-                      className="w-full px-4 py-3 rounded-xl bg-black/60 border border-white/10 text-sm text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-[#EEDC9A]/70"
+                      maxLength={80}
+                      autoComplete="name"
                     />
-                  </div>
+                  </LabelInputContainer>
 
-                  <div>
-                    <label className="block text-xs font-mono text-neutral-300 mb-1">WhatsApp / Telefone</label>
-                    <input
+                  <LabelInputContainer>
+                    <Label htmlFor="phone">WhatsApp / Telefone</Label>
+                    <Input
+                      id="phone"
                       type="tel"
                       required
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="(11) 99999-9999"
-                      className="w-full px-4 py-3 rounded-xl bg-black/60 border border-white/10 text-sm text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-[#EEDC9A]/70"
+                      onChange={handlePhoneChange}
+                      placeholder="(32) 99999-9999"
+                      maxLength={30}
+                      autoComplete="tel"
                     />
-                  </div>
+                  </LabelInputContainer>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-mono text-neutral-300 mb-1">Seu E-mail</label>
-                  <input
+                <LabelInputContainer>
+                  <Label htmlFor="email">Seu E-mail</Label>
+                  <Input
+                    id="email"
                     type="email"
                     required
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={handleEmailChange}
                     placeholder="seuemail@exemplo.com"
-                    className="w-full px-4 py-3 rounded-xl bg-black/60 border border-white/10 text-sm text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-[#EEDC9A]/70"
+                    maxLength={120}
+                    autoComplete="email"
                   />
-                </div>
+                </LabelInputContainer>
 
-                <div>
-                  <label className="block text-xs font-mono text-neutral-300 mb-1">Mensagem ou Dúvida</label>
-                  <textarea
-                    rows={4}
+                <LabelInputContainer>
+                  <Label htmlFor="message">Mensagem ou Dúvida</Label>
+                  <Textarea
+                    id="message"
                     required
+                    rows={4}
                     value={formData.message}
-                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                    onChange={handleMessageChange}
                     placeholder="Tenho interesse em fazer uma aula no núcleo..."
-                    className="w-full px-4 py-3 rounded-xl bg-black/60 border border-white/10 text-sm text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-[#EEDC9A]/70 resize-none"
+                    maxLength={1500}
                   />
-                </div>
+                </LabelInputContainer>
 
-                <div className="pt-1">
+                <div className="pt-2">
                   <StatefulButton
                     type="submit"
                     onClick={handleSendMessage}
-                    loadingText="Enviando..."
-                    successText="Solicitação Enviada!"
-                    className="w-full py-4 text-xs sm:text-sm font-bold uppercase tracking-widest shadow-md"
+                    loadingText="Validando e Enviando..."
+                    successText="Solicitação Enviada com Sucesso!"
+                    className="group/btn relative w-full py-4 text-xs sm:text-sm font-bold uppercase tracking-widest shadow-md overflow-hidden"
                   >
-                    Enviar Solicitação
+                    <span>Enviar Solicitação</span>
+                    <BottomGradient />
                   </StatefulButton>
                 </div>
               </form>
             </div>
           </div>
-        </BorderGlow>
+        </div>
       </div>
 
       {/* Footer Bottom Bar */}

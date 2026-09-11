@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Play, Pause, Music, Clock3, Volume2, Volume1, Share2, Disc3 } from 'lucide-react';
 import { RhythmTrack } from '../types';
 import { ALL_RHYTHMS } from '../data/rhythmsData';

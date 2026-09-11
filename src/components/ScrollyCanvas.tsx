@@ -53,29 +53,43 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
       }
     };
 
-    // Load initial priority batch (first 36 frames) immediately
+    // Preload frames with async decoding to keep main thread smooth
     const priorityCount = 36;
     for (let i = 1; i <= priorityCount; i++) {
       const img = new Image();
+      img.decoding = 'async';
       const frameNum = String(i).padStart(3, '0');
       img.src = `/frames/ezgif-frame-${frameNum}.jpg`;
-      img.onload = checkComplete;
+      img.onload = () => {
+        if (img.decode) {
+          img.decode().catch(() => {}).finally(checkComplete);
+        } else {
+          checkComplete();
+        }
+      };
       img.onerror = checkComplete;
       images[i - 1] = img;
     }
 
-    // Load remaining frames in small background batches to keep main thread idle & network free
+    // Load remaining frames in background batches
     let nextIndex = priorityCount + 1;
-    const batchSize = 12;
+    const batchSize = 16;
     const loadNextBatch = () => {
       if (isCancelled || nextIndex > TOTAL_FRAMES) return;
 
       const limit = Math.min(nextIndex + batchSize, TOTAL_FRAMES + 1);
       for (let i = nextIndex; i < limit; i++) {
         const img = new Image();
+        img.decoding = 'async';
         const frameNum = String(i).padStart(3, '0');
         img.src = `/frames/ezgif-frame-${frameNum}.jpg`;
-        img.onload = checkComplete;
+        img.onload = () => {
+          if (img.decode) {
+            img.decode().catch(() => {}).finally(checkComplete);
+          } else {
+            checkComplete();
+          }
+        };
         img.onerror = checkComplete;
         images[i - 1] = img;
       }
@@ -83,7 +97,7 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
 
       if (nextIndex <= TOTAL_FRAMES) {
         if ('requestIdleCallback' in window) {
-          (window as any).requestIdleCallback(() => loadNextBatch(), { timeout: 100 });
+          (window as any).requestIdleCallback(() => loadNextBatch(), { timeout: 80 });
         } else {
           setTimeout(loadNextBatch, 16);
         }
@@ -98,23 +112,25 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
     };
   }, []);
 
-  // Helper to find nearest loaded frame to avoid black screen flashes on iOS
+  const lastRenderedImgRef = useRef<HTMLImageElement | null>(null);
+
+  // Helper to find nearest loaded frame to prevent any visual gap
   const getAvailableImage = (index: number): HTMLImageElement | null => {
     const direct = imagesRef.current[index];
     if (direct && direct.complete && direct.naturalWidth > 0) {
       return direct;
     }
-    // Search nearest available frames if target index is still decoding
-    for (let offset = 1; offset <= 10; offset++) {
+    // Search nearest available frames if target index is still loading
+    for (let offset = 1; offset <= 20; offset++) {
       const prev = imagesRef.current[index - offset];
       if (prev && prev.complete && prev.naturalWidth > 0) return prev;
       const next = imagesRef.current[index + offset];
       if (next && next.complete && next.naturalWidth > 0) return next;
     }
-    return null;
+    return lastRenderedImgRef.current;
   };
 
-  // Draw Frame function with Cover Math & ZOOM_FACTOR
+  // Draw Frame function with Cover Math & ZOOM_FACTOR (No fillRect to prevent mobile blinking)
   const drawFrame = (index: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -122,7 +138,9 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
     if (!ctx) return;
 
     const img = getAvailableImage(index);
-    if (!img) return; // Do not clear frame if no image is ready (avoids disappearing/blinking)
+    if (!img) return; // Retain current frame buffer
+
+    lastRenderedImgRef.current = img;
 
     const width = canvas.width;
     const height = canvas.height;
@@ -152,29 +170,39 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
     const offsetX = (width - renderWidth) / 2;
     const offsetY = (height - renderHeight) / 2;
 
-    // Clear background and draw frame
-    ctx.fillStyle = '#050505';
-    ctx.fillRect(0, 0, width, height);
+    // Direct draw (drawImage completely covers canvas; no fillRect needed, preventing black flickering)
     ctx.drawImage(img, offsetX, offsetY, renderWidth, renderHeight);
   };
 
-  // Resize Listener with Mobile DPR capping for iOS performance & memory stability
+  // Resize Listener: Ignore mobile address bar hide/show scroll resize to prevent canvas buffer clearing
   useEffect(() => {
-    let resizeTimer: any;
+    let lastWidth = window.innerWidth;
+    let lastHeight = window.innerHeight;
+
     const handleResize = () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-        const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
-        canvas.width = Math.floor(window.innerWidth * dpr);
-        canvas.height = Math.floor(window.innerHeight * dpr);
+      const isMobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const widthChanged = Math.abs(window.innerWidth - lastWidth) > 5;
+      const heightChanged = Math.abs(window.innerHeight - lastHeight) > 150; // Ignore address bar collapse
 
-        // Redraw current frame
+      if (isMobile && !widthChanged && !heightChanged) {
+        return; // Skip resize event caused purely by scrolling address bar
+      }
+
+      lastWidth = window.innerWidth;
+      lastHeight = window.innerHeight;
+
+      const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
+      const targetWidth = Math.floor(window.innerWidth * dpr);
+      const targetHeight = Math.floor(window.innerHeight * dpr);
+
+      if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
         drawFrame(currentFrameRef.current);
-      }, 50);
+      }
     };
 
     // Initial setup
@@ -189,7 +217,6 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
 
     window.addEventListener('resize', handleResize, { passive: true });
     return () => {
-      clearTimeout(resizeTimer);
       window.removeEventListener('resize', handleResize);
     };
   }, []);
