@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Phone, Mail, MapPin, Instagram, Youtube, AlertCircle } from 'lucide-react';
+import { Mail, Instagram, Youtube, AlertCircle } from 'lucide-react';
 import { Button as StatefulButton } from '@/components/ui/stateful-button';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
@@ -142,16 +142,8 @@ export const ContactFooter: React.FC = () => {
 
               <div className="space-y-3 pt-2 text-xs font-mono text-neutral-300">
                 <div className="flex items-center gap-3">
-                  <Phone className="w-4 h-4 text-[#EEDC9A]" />
-                  <span>WhatsApp: (32) 98407-7391</span>
-                </div>
-                <div className="flex items-center gap-3">
                   <Mail className="w-4 h-4 text-[#EEDC9A]" />
                   <span>contato@elitenago.com.br</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <MapPin className="w-4 h-4 text-[#EEDC9A]" />
-                  <span>Juiz de Fora - MG / Brasil</span>
                 </div>
               </div>
             </div>
@@ -251,7 +243,7 @@ export const ContactFooter: React.FC = () => {
         {/* Social Links */}
         <div className="flex items-center gap-4">
           <a
-            href="https://instagram.com"
+            href="https://instagram.com/elite_nago_oficial"
             target="_blank"
             rel="noopener noreferrer"
             className="w-9 h-9 rounded-full bg-black/60 border border-white/15 flex items-center justify-center hover:bg-white hover:text-black transition-all text-neutral-300"
