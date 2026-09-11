@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, Music, Clock3, Volume2, Volume1, Share2, Disc3 } from 'lucide-react';
+import { Play, Pause, Music, Volume2, Volume1, Share2, Disc3 } from 'lucide-react';
 import { RhythmTrack } from '../types';
 import { ALL_RHYTHMS } from '../data/rhythmsData';
 import { ScrollFloat } from './ScrollFloat';
@@ -120,18 +120,6 @@ export const SoundboardSection: React.FC<SoundboardSectionProps> = ({ onOpenPlay
 
       {/* Spotify-style Tracklist Container with Glassmorphism */}
       <div className="max-w-5xl mx-auto bg-black/60 backdrop-blur-md rounded-3xl border border-white/10 hover:border-[#EEDC9A]/30 shadow-2xl transition-all duration-300 overflow-hidden">
-        {/* Table Column Headers */}
-        <div className="grid grid-cols-12 gap-4 px-5 sm:px-8 py-4 border-b border-white/10 text-xs font-mono font-bold uppercase tracking-wider text-neutral-400">
-          <div className="col-span-1 text-center">#</div>
-          <div className="col-span-5 sm:col-span-4">Título & Ritmo</div>
-          <div className="hidden sm:block col-span-4">Instrumentos & Descrição</div>
-          <div className="hidden md:block col-span-1 text-center">Spotify</div>
-          <div className="col-span-6 sm:col-span-3 md:col-span-2 text-right flex items-center justify-end gap-1.5">
-            <Clock3 className="w-3.5 h-3.5" />
-            <span>Duração</span>
-          </div>
-        </div>
-
         {/* 4 Tracks List */}
         <div className="divide-y divide-white/5">
           {featuredRhythms.map((track, idx) => {

@@ -7,7 +7,6 @@ import {
   Music,
   Disc3,
   Share2,
-  Clock3,
   Maximize2,
   Volume1,
   Volume2,
@@ -299,18 +298,6 @@ export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
           </div>
         ) : (
           <div className="bg-black/60 backdrop-blur-md rounded-3xl border border-white/10 hover:border-[#EEDC9A]/30 shadow-2xl transition-all duration-300 overflow-hidden">
-            {/* Table Column Headers (Desktop) */}
-            <div className="grid grid-cols-12 gap-4 px-5 sm:px-8 py-3.5 border-b border-white/10 text-xs font-mono font-bold uppercase tracking-wider text-neutral-400">
-              <div className="col-span-1 text-center">#</div>
-              <div className="col-span-5 sm:col-span-4">Título & Ritmo</div>
-              <div className="hidden sm:block col-span-3">Instrumentos</div>
-              <div className="hidden md:block col-span-2">Tempo / BPM</div>
-              <div className="col-span-6 sm:col-span-4 md:col-span-2 text-right flex items-center justify-end gap-1.5">
-                <Clock3 className="w-3.5 h-3.5" />
-                <span>Duração</span>
-              </div>
-            </div>
-
             {/* Track Rows */}
             <div className="divide-y divide-white/5">
               {filteredTracks.map((track, idx) => {

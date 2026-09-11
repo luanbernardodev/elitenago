@@ -1,51 +1,153 @@
-import React, { useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X } from 'lucide-react';
+"use client";
+import React, { useState, useRef, useEffect, useId } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Search, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export interface GooeyInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface GooeyInputClassNames {
+  root?: string;
+  filterWrap?: string;
+  buttonRow?: string;
+  trigger?: string;
+  input?: string;
+  bubble?: string;
+  bubbleSurface?: string;
+}
+
+export interface GooeyInputProps {
   placeholder?: string;
-  value?: string;
-  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onClear?: () => void;
   className?: string;
+  classNames?: GooeyInputClassNames;
+  collapsedWidth?: number;
+  expandedWidth?: number | string;
+  expandedOffset?: number;
+  gooeyBlur?: number;
+  value?: string;
+  defaultValue?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onValueChange?: (value: string) => void;
+  onOpenChange?: (open: boolean) => void;
+  onClear?: () => void;
+  disabled?: boolean;
 }
 
 export const GooeyInput: React.FC<GooeyInputProps> = ({
-  placeholder = 'Pesquisar notícias, eventos, workshops...',
-  value,
+  placeholder = "Search...",
+  className,
+  classNames,
+  collapsedWidth = 130,
+  expandedWidth = "min(520px, 85vw)",
+  expandedOffset = 48,
+  gooeyBlur = 5,
+  value: controlledValue,
+  defaultValue = "",
   onChange,
+  onValueChange,
+  onOpenChange,
   onClear,
-  className = '',
-  ...props
+  disabled = false,
 }) => {
-  const [isFocused, setIsFocused] = useState(false);
+  const isControlled = controlledValue !== undefined;
+  const [internalValue, setInternalValue] = useState(defaultValue);
+  const currentValue = isControlled ? controlledValue : internalValue;
+
+  const [isOpen, setIsOpen] = useState(Boolean(currentValue));
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const filterId = useId().replace(/:/g, "_");
 
-  const hasValue = Boolean(value && value.length > 0);
+  // Keep open if text exists
+  useEffect(() => {
+    if (currentValue && !isOpen) {
+      setIsOpen(true);
+      onOpenChange?.(true);
+    }
+  }, [currentValue, isOpen, onOpenChange]);
 
-  const handleClear = () => {
-    if (onClear) {
-      onClear();
-    } else if (onChange) {
+  const handleOpen = () => {
+    if (disabled) return;
+    setIsOpen(true);
+    onOpenChange?.(true);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+  };
+
+  const handleClose = () => {
+    if (!currentValue) {
+      setIsOpen(false);
+      onOpenChange?.(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (!isControlled) {
+      setInternalValue(val);
+    }
+    onChange?.(e);
+    onValueChange?.(val);
+  };
+
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isControlled) {
+      setInternalValue("");
+    }
+    if (onChange) {
       const syntheticEvent = {
-        target: { value: '' },
+        target: { value: "" },
       } as React.ChangeEvent<HTMLInputElement>;
       onChange(syntheticEvent);
     }
+    onValueChange?.("");
+    onClear?.();
     inputRef.current?.focus();
   };
 
+  // Close on outside click if empty
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        if (!currentValue) {
+          setIsOpen(false);
+          onOpenChange?.(false);
+        }
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [currentValue, onOpenChange]);
+
+  const targetExpandedWidth =
+    typeof expandedWidth === "number" ? `${expandedWidth}px` : expandedWidth;
+
   return (
-    <div className={`relative flex items-center justify-center w-full max-w-xl mx-auto ${className}`}>
-      {/* SVG Gooey Filter definition */}
-      <svg className="hidden" aria-hidden="true">
+    <div
+      ref={containerRef}
+      className={cn(
+        "relative flex items-center justify-center py-2 select-none",
+        classNames?.root,
+        className
+      )}
+    >
+      {/* SVG Gooey Filter */}
+      <svg className="absolute w-0 h-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <defs>
-          <filter id="gooey-filter">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+          <filter id={`gooey-filter-${filterId}`}>
+            <feGaussianBlur in="SourceGraphic" stdDeviation={gooeyBlur} result="blur" />
             <feColorMatrix
               in="blur"
               mode="matrix"
-              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9"
+              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -8"
               result="goo"
             />
             <feComposite in="SourceGraphic" in2="goo" operator="atop" />
@@ -53,73 +155,93 @@ export const GooeyInput: React.FC<GooeyInputProps> = ({
         </defs>
       </svg>
 
-      {/* Ambient background glow */}
-      <motion.div
-        animate={{
-          scale: isFocused ? 1.03 : 1,
-          opacity: isFocused ? 0.9 : 0.4,
-        }}
-        transition={{ duration: 0.3 }}
-        className="absolute -inset-1 rounded-full bg-gradient-to-r from-amber-500/30 via-yellow-500/20 to-amber-600/30 blur-xl pointer-events-none"
-      />
-
-      {/* Main interactive search container */}
-      <motion.div
-        layout
-        transition={{
-          type: 'spring',
-          stiffness: 400,
-          damping: 30,
-        }}
-        className={`relative w-full flex items-center gap-3 px-5 py-3.5 rounded-full bg-[#0c0c0f]/90 border transition-colors duration-300 shadow-2xl backdrop-blur-xl ${
-          isFocused
-            ? 'border-amber-500/70 shadow-[0_0_30px_rgba(245,158,11,0.25)]'
-            : 'border-white/10 hover:border-amber-500/40'
-        }`}
+      {/* Outer wrapper with filter */}
+      <div
+        className={cn("relative flex items-center justify-center", classNames?.filterWrap)}
+        style={{ filter: `url(#gooey-filter-${filterId})` }}
       >
-        {/* Search Icon with subtle pulse animation */}
+        {/* Detaching Bubble / Search Icon */}
         <motion.div
           animate={{
-            scale: isFocused ? [1, 1.15, 1] : 1,
-            color: isFocused ? '#fbbf24' : '#9ca3af',
+            x: isOpen ? -expandedOffset : 0,
+            scale: isOpen ? 1 : 0.95,
           }}
-          transition={{ duration: 0.3 }}
-          className="shrink-0 flex items-center justify-center text-neutral-400"
+          transition={{
+            type: "spring",
+            stiffness: 420,
+            damping: 28,
+            mass: 0.8,
+          }}
+          onClick={handleOpen}
+          className={cn(
+            "relative z-20 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-black shadow-lg cursor-pointer",
+            classNames?.bubble,
+            classNames?.bubbleSurface
+          )}
         >
-          <Search className="w-5 h-5 text-amber-400" />
+          <Search className="h-4 w-4 text-neutral-800" />
         </motion.div>
 
-        {/* Input Field */}
-        <input
-          ref={inputRef}
-          type="text"
-          value={value}
-          onChange={onChange}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          placeholder={placeholder}
-          className="w-full bg-transparent text-sm sm:text-base text-white placeholder-neutral-500 font-medium focus:outline-none tracking-wide"
-          {...props}
-        />
-
-        {/* Clear Button */}
-        <AnimatePresence>
-          {hasValue && (
-            <motion.button
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              onClick={handleClear}
-              type="button"
-              className="p-1 rounded-full bg-white/10 hover:bg-amber-500 hover:text-black text-neutral-400 transition-colors cursor-pointer shrink-0"
-              aria-label="Limpar pesquisa"
-            >
-              <X className="w-3.5 h-3.5" />
-            </motion.button>
+        {/* Morphing Input Body */}
+        <motion.div
+          animate={{
+            width: isOpen ? targetExpandedWidth : `${collapsedWidth}px`,
+            x: isOpen ? expandedOffset / 2 : 0,
+          }}
+          transition={{
+            type: "spring",
+            stiffness: 420,
+            damping: 28,
+            mass: 0.8,
+          }}
+          onClick={!isOpen ? handleOpen : undefined}
+          className={cn(
+            "absolute flex h-11 items-center rounded-full bg-white text-neutral-900 shadow-lg overflow-hidden transition-colors cursor-pointer",
+            isOpen && "cursor-text",
+            classNames?.buttonRow
           )}
-        </AnimatePresence>
-      </motion.div>
+          style={{ maxWidth: "min(92vw, 560px)" }}
+        >
+          {!isOpen ? (
+            <div className="flex h-full w-full items-center justify-center pl-7 pr-4 text-xs font-semibold text-neutral-700 font-syne tracking-wide">
+              {placeholder}
+            </div>
+          ) : (
+            <div className="flex h-full w-full items-center px-4">
+              <input
+                ref={inputRef}
+                type="text"
+                value={currentValue}
+                onChange={handleInputChange}
+                onBlur={handleClose}
+                placeholder={placeholder}
+                disabled={disabled}
+                className={cn(
+                  "w-full bg-transparent text-sm font-medium text-neutral-900 placeholder:text-neutral-400 focus:outline-none",
+                  classNames?.input
+                )}
+              />
+
+              <AnimatePresence>
+                {currentValue && (
+                  <motion.button
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    type="button"
+                    onClick={handleClear}
+                    className="ml-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neutral-200 hover:bg-neutral-300 text-neutral-600 transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-3 w-3" />
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+        </motion.div>
+      </div>
     </div>
   );
 };
