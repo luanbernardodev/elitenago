@@ -7,6 +7,7 @@ import { ScrollFloat } from './ScrollFloat';
 import { BentoGrid, BentoGridItem } from './ui/bento-grid';
 import { InteractiveHoverButton } from '@/registry/magicui/interactive-hover-button';
 import { StarBorder } from './ui/StarBorder';
+import { supabase } from '../lib/supabase';
 
 interface NewsSectionProps {
   onOpenNewsPage?: () => void;
@@ -15,9 +16,56 @@ interface NewsSectionProps {
 export const NewsSection: React.FC<NewsSectionProps> = ({ onOpenNewsPage }) => {
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [newsItems, setNewsItems] = useState<NewsItem[]>(ALL_NEWS);
+
+  // Sync with Supabase and listen to realtime changes
+  useEffect(() => {
+    const fetchLiveNews = async () => {
+      try {
+        const { data } = await supabase
+          .from('news')
+          .select('*')
+          .eq('status', 'published')
+          .order('created_at', { ascending: false });
+
+        if (data && data.length > 0) {
+          const mapped: NewsItem[] = data.map((d: any) => ({
+            id: d.id,
+            title: d.title,
+            category: d.category || 'Eventos & Oficinas',
+            author: d.author || 'Elite Nagô',
+            date: d.date,
+            summary: d.excerpt || d.title,
+            excerpt: d.excerpt || d.title,
+            content: d.content || d.excerpt || d.title,
+            image: d.image || 'https://i.imgur.com/A46hzMt.jpeg',
+            featured: d.is_featured !== undefined ? d.is_featured : true,
+            tag: d.tag || d.category?.toUpperCase() || 'EVENTOS & CERIMÔNIAS',
+            status: d.status || 'published',
+          }));
+          setNewsItems(mapped);
+        }
+      } catch {
+        // Fallback to ALL_NEWS
+      }
+    };
+
+    fetchLiveNews();
+
+    const channel = supabase
+      .channel('news-section-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'news' }, () => {
+        fetchLiveNews();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // 4 latest news items
-  const latestNews = ALL_NEWS.slice(0, 4);
+  const latestNews = newsItems.slice(0, 4);
 
   // Lock body scroll and handle Escape key when modal is open
   useEffect(() => {

@@ -1,13 +1,16 @@
 export interface NewsItem {
   id: string;
   title: string;
+  tag: string;
   category: string;
+  author?: string;
   date: string;
   summary: string;
+  excerpt?: string;
   content: string;
   image?: string;
   featured?: boolean;
-  tag: string;
+  status?: 'published' | 'draft';
 }
 
 export interface GraduationCordColor {

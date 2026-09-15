@@ -11,6 +11,7 @@ import {
   sanitizePhone,
   sanitizeMessage,
 } from '@/lib/security';
+import { supabase } from '@/lib/supabase';
 
 const LabelInputContainer = ({
   children,
@@ -103,14 +104,20 @@ export const ContactFooter: React.FC = () => {
       name: nameValidation.sanitized,
       email: emailValidation.sanitized,
       phone: phoneValidation.sanitized,
+      subject: 'Contato via Rodapé do Site',
       message: messageValidation.sanitized,
-      sentAt: new Date().toISOString(),
+      date: new Date().toLocaleDateString('pt-BR'),
+      status: 'pending',
     };
 
-    console.log('Secure Contact Form Payload:', cleanPayload);
+    try {
+      await supabase.from('contact_requests').insert([cleanPayload]);
+    } catch (err) {
+      console.warn('Supabase offline or table pending, fallback simulation:', err);
+    }
 
     // Simulate sending message API
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // Clear form after success
     setTimeout(() => {

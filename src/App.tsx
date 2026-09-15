@@ -9,6 +9,7 @@ import { NewsPage } from './components/NewsPage';
 import { PlaylistPage } from './components/PlaylistPage';
 import { MediaSection } from './components/MediaSection';
 import { MediaPage } from './components/MediaPage';
+import { AdminDashboard } from './components/admin/AdminDashboard';
 import { PartnersSection } from './components/PartnersSection';
 import { SoundboardSection } from './components/SoundboardSection';
 import { AcademySection } from './components/AcademySection';
@@ -16,7 +17,7 @@ import { ContactFooter } from './components/ContactFooter';
 import { ScrollTopButton } from './components/ScrollTopButton';
 
 export function App() {
-  const [currentView, setCurrentView] = useState<'home' | 'noticias' | 'playlist' | 'midias'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'noticias' | 'playlist' | 'midias' | 'admin'>('home');
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Check URL params / hash on mount and on popstate
@@ -29,8 +30,13 @@ export function App() {
       const isPlaylistHash = window.location.hash === '#/playlist';
       const isMediaParam = params.get('view') === 'midias';
       const isMediaHash = window.location.hash === '#/midias';
+      const isAdminParam = params.get('view') === 'admin' || params.get('view') === 'dashboard';
+      const isAdminHash = window.location.hash === '#/admin' || window.location.hash === '#/dashboard';
 
-      if (isNewsParam || isNewsHash) {
+      if (isAdminParam || isAdminHash) {
+        setCurrentView('admin');
+        window.scrollTo(0, 0);
+      } else if (isNewsParam || isNewsHash) {
         setCurrentView('noticias');
         window.scrollTo(0, 0);
       } else if (isPlaylistParam || isPlaylistHash) {
@@ -48,9 +54,21 @@ export function App() {
     window.addEventListener('popstate', handleUrlChange);
     window.addEventListener('hashchange', handleUrlChange);
 
+    // Discreet shortcut Ctrl+Shift+A for Admin Access
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        window.history.pushState({}, '', '?view=admin');
+        setCurrentView('admin');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
     return () => {
       window.removeEventListener('popstate', handleUrlChange);
       window.removeEventListener('hashchange', handleUrlChange);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
@@ -105,6 +123,11 @@ export function App() {
     setCurrentView('home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // If in Admin Dashboard View, render standalone AdminDashboard component
+  if (currentView === 'admin') {
+    return <AdminDashboard onBackToHome={navigateToHome} />;
+  }
 
   // If in News Page View, render standalone NewsPage component
   if (currentView === 'noticias') {

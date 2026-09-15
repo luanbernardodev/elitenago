@@ -37,7 +37,7 @@ const CIRCULAR_GALLERY_ITEMS = [
     text: ''
   },
   {
-    image: '/img/phPJ0Qh.jpeg',
+    image: 'https://i.imgur.com/phPJ0Qh.jpeg',
     text: ''
   },
   {

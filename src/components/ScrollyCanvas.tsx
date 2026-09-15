@@ -62,7 +62,7 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
       img.src = `/frames/ezgif-frame-${frameNum}.jpg`;
       img.onload = () => {
         if (img.decode) {
-          img.decode().catch(() => {}).finally(checkComplete);
+          img.decode().catch(() => { }).finally(checkComplete);
         } else {
           checkComplete();
         }
@@ -85,7 +85,7 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
         img.src = `/frames/ezgif-frame-${frameNum}.jpg`;
         img.onload = () => {
           if (img.decode) {
-            img.decode().catch(() => {}).finally(checkComplete);
+            img.decode().catch(() => { }).finally(checkComplete);
           } else {
             checkComplete();
           }
@@ -332,7 +332,7 @@ export const ScrollyCanvas: React.FC<ScrollyCanvasProps> = ({
                 color="gold"
               />
               <span className="text-xs md:text-sm font-medium tracking-[0.25em] text-[#eedc9a]/90 font-montserrat uppercase">
-                Carregando experiência...
+                Aguarde...
               </span>
             </div>
           </div>
