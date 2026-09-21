@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Clock, UserCheck } from 'lucide-react';
 import { AcademyUnit } from '../types';
 import { ScrollFloat } from './ScrollFloat';
 import { InteractiveHoverButton } from '@/registry/magicui/interactive-hover-button';
 import { StarBorder } from './ui/StarBorder';
+import { supabase } from '../lib/supabase';
 
-const ACADEMIES: AcademyUnit[] = [
+const DEFAULT_ACADEMIES: AcademyUnit[] = [
   {
     id: 'unit-1',
     city: 'Juiz de Fora - MG',
@@ -45,6 +46,55 @@ const ACADEMIES: AcademyUnit[] = [
 ];
 
 export const AcademySection: React.FC = () => {
+  const [academies, setAcademies] = useState<AcademyUnit[]>(DEFAULT_ACADEMIES);
+
+  useEffect(() => {
+    const fetchAcademies = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('academies')
+          .select('*')
+          .order('created_at', { ascending: true });
+
+        if (data && data.length > 0 && !error) {
+          setAcademies(
+            data.map((ac: any) => ({
+              id: ac.id,
+              name: ac.name,
+              city: ac.city || 'Juiz de Fora - MG',
+              neighborhood: ac.neighborhood || 'Centro',
+              address: ac.address || ac.name || 'Endereço a combinar',
+              responsible: ac.responsible || ac.teacher || 'Responsável',
+              days: ac.days || 'Segunda, Quarta e Sexta',
+              hours: ac.hours || '19:00 às 20:30',
+              whatsapp: ac.whatsapp || '5532984077391',
+              mapsUrl: ac.maps_url || (ac.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ac.address + ', ' + ac.city)}` : undefined),
+              embedQuery: ac.embed_query || `${ac.address || ac.name}, ${ac.city}`,
+              students: ac.students_count,
+              max: ac.max_capacity,
+              growth: ac.growth_rate,
+            }))
+          );
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar academias do Supabase, usando padrão:', err);
+      }
+    };
+
+    fetchAcademies();
+
+    const channel = supabase
+      .channel('academies-live-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'academies' }, () => {
+        fetchAcademies();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   return (
     <section id="academias" className="relative py-16 sm:py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto z-10 w-full flex flex-col items-center">
       {/* Header */}
@@ -59,7 +109,7 @@ export const AcademySection: React.FC = () => {
 
       {/* Academy Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 items-stretch w-full max-w-md md:max-w-none mx-auto justify-center">
-        {ACADEMIES.map((unit) => {
+        {academies.map((unit) => {
           const mapQuery = encodeURIComponent(unit.embedQuery || `${unit.address}, ${unit.city}`);
           const embedUrl = `https://maps.google.com/maps?q=${mapQuery}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
           const directMapsUrl = unit.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${mapQuery}`;

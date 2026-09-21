@@ -48,6 +48,7 @@ export interface RhythmTrack {
   cover?: string;
   duration?: string;
   audioSrc?: string;
+  spotifyUrl?: string;
   freq: number; // Frequency for audio synthesis simulator
   pattern: number[]; // Rhythm beat pattern
 }
@@ -65,13 +66,19 @@ export interface MestreInfo {
 
 export interface AcademyUnit {
   id: string;
+  name?: string;
   city: string;
   neighborhood: string;
   address: string;
   responsible: string;
+  teacher?: string;
   days: string;
   hours: string;
   whatsapp: string;
   mapsUrl?: string;
   embedQuery?: string;
+  students?: number;
+  max?: number;
+  growth?: string;
 }
+

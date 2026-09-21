@@ -36,6 +36,7 @@ export interface DatabaseApproval {
   audio_url?: string;
   thumbnail_url?: string;
   image_url?: string;
+  spotify_url?: string | null;
   description: string;
   status: 'pending' | 'approved' | 'rejected';
   created_at?: string;
@@ -62,5 +63,68 @@ export interface DatabaseMedia {
   description?: string;
   url: string;
   thumbnail_url?: string;
+  spotify_url?: string | null;
   created_at?: string;
 }
+
+export interface DatabaseAcademy {
+  id: string;
+  name: string;
+  city: string;
+  neighborhood: string;
+  address: string;
+  responsible: string;
+  teacher?: string;
+  days: string;
+  hours: string;
+  whatsapp?: string;
+  maps_url?: string;
+  embed_query?: string;
+  students_count?: number;
+  max_capacity?: number;
+  growth_rate?: string;
+  created_at?: string;
+}
+
+export async function uploadToStorage(file: File, folder = 'uploads'): Promise<string | null> {
+  try {
+    const ext = file.name.split('.').pop() || 'bin';
+    const cleanFileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+    const { data, error } = await supabase.storage
+      .from('medias')
+      .upload(cleanFileName, file, {
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+    if (error) {
+      console.warn('Storage upload warning:', error.message);
+      return null;
+    }
+
+    return publicUrlData.publicUrl;
+  } catch (err) {
+    console.warn('Storage upload error:', err);
+    return null;
+  }
+}
+
+export async function fetchSpotifyMetadata(spotifyUrl: string): Promise<{ title?: string; author?: string; thumbnail_url?: string } | null> {
+  try {
+    if (!spotifyUrl || !spotifyUrl.includes('spotify.com')) return null;
+    const res = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(spotifyUrl.trim())}`);
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        title: data.title,
+        author: data.author_name,
+        thumbnail_url: data.thumbnail_url,
+      };
+    }
+  } catch (err) {
+    console.warn('Could not fetch Spotify oEmbed:', err);
+  }
+  return null;
+}
+
+

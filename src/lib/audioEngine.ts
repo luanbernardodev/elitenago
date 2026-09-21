@@ -175,44 +175,18 @@ export function playTrack(
       }
     });
 
-    audio.addEventListener('ended', () => {
-      if (onEnded) onEnded();
+    audio.addEventListener('error', (err) => {
+      console.warn('Audio playback error for track:', track.name, err);
+      stopCurrentTrack();
     });
 
     audio.play().catch((err) => {
-      console.warn('Playback error, falling back to synth pulse:', err);
-      fallbackToSynth(track, volume, onTimeUpdate);
+      console.warn('Audio play promise rejected:', err);
+      stopCurrentTrack();
     });
   } else {
-    fallbackToSynth(track, volume, onTimeUpdate);
+    // If no audio source is present, handle gracefully
+    stopCurrentTrack();
   }
 }
 
-function fallbackToSynth(
-  track: RhythmTrack,
-  volume: number,
-  onTimeUpdate?: (seconds: number) => void
-) {
-  if (track.pattern[0] === 1) {
-    playRhythmPulse(track.freq, volume);
-  }
-
-  let step = 1;
-  synthInterval = setInterval(() => {
-    const isBeat = track.pattern[step % track.pattern.length] === 1;
-    if (isBeat) {
-      playRhythmPulse(track.freq, globalVolume);
-    }
-    step++;
-  }, 250);
-
-  let currentSec = 0;
-  const timer = setInterval(() => {
-    if (currentPlayingTrack?.id !== track.id) {
-      clearInterval(timer);
-      return;
-    }
-    currentSec++;
-    if (onTimeUpdate) onTimeUpdate(currentSec);
-  }, 1000);
-}

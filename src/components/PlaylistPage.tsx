@@ -19,6 +19,7 @@ import { ElasticSlider } from './ElasticSlider';
 import { SpotifyPlayerModal } from './SpotifyPlayerModal';
 import { Skeleton } from './ui/skeleton';
 import { useNetworkStatus } from '@/lib/useNetworkStatus';
+import { supabase } from '@/lib/supabase';
 
 import { playTrack, stopCurrentTrack, setGlobalVolume, seekCurrentTrack } from '@/lib/audioEngine';
 
@@ -27,6 +28,7 @@ interface PlaylistPageProps {
 }
 
 export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
+  const [tracks, setTracks] = useState<RhythmTrack[]>(ALL_RHYTHMS);
   const { isOnline } = useNetworkStatus();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('TODOS');
@@ -38,18 +40,67 @@ export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
+    const fetchMusic = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('medias')
+          .select('*')
+          .eq('type', 'music')
+          .order('created_at', { ascending: false });
+
+        if (data && data.length > 0 && !error) {
+          const supabaseTracks: RhythmTrack[] = data.map((m: any) => ({
+            id: m.id,
+            name: m.title,
+            instrument: m.category || 'Toques & Cantigas',
+            tempo: 'Moderado',
+            category: m.category || 'Toques de Berimbau',
+            artist: m.author || 'Elite Nagô',
+            description: m.description || 'Toque tradicional de capoeira com mandinga e ritmo.',
+            type: 'music',
+            audioSrc: m.url && !m.url.startsWith('blob:') && (m.url.startsWith('http') || m.url.startsWith('/')) ? m.url : undefined,
+            spotifyUrl: m.spotify_url || (m.url?.includes('spotify.com') ? m.url : undefined),
+            cover: m.thumbnail_url && !m.thumbnail_url.startsWith('blob:') && m.thumbnail_url !== 'https://i.imgur.com/A46hzMt.jpeg' ? m.thumbnail_url : '/logos/en_thumb.png',
+            freq: 220,
+            pattern: [1, 0, 1, 1, 0, 1, 0, 0],
+          }));
+
+          setTracks(supabaseTracks);
+        } else if (!data || data.length === 0) {
+          setTracks(ALL_RHYTHMS);
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar músicas do Supabase na Playlist:', err);
+      }
+    };
+
+    fetchMusic();
+
+    const channel = supabase
+      .channel('playlist-medias-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'medias' }, () => {
+        fetchMusic();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
     setGlobalVolume(volume);
   }, [volume]);
 
   // Categories list
   const categories = useMemo(() => {
-    const cats = Array.from(new Set(ALL_RHYTHMS.map((r) => r.category || 'Outros')));
+    const cats = Array.from(new Set(tracks.map((r) => r.category || 'Outros')));
     return ['TODOS', ...cats];
-  }, []);
+  }, [tracks]);
 
   // Filtered tracks
   const filteredTracks = useMemo(() => {
-    return ALL_RHYTHMS.filter((track) => {
+    return tracks.filter((track) => {
       const q = searchQuery.toLowerCase();
       const matchesSearch =
         track.name.toLowerCase().includes(q) ||
@@ -64,9 +115,16 @@ export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
 
       return matchesSearch && matchesCategory;
     });
-  }, [searchQuery, selectedCategory]);
+  }, [tracks, searchQuery, selectedCategory]);
+
 
   const togglePlayTrack = (track: RhythmTrack) => {
+    if (!track.audioSrc && track.spotifyUrl) {
+      setActiveTrack(track);
+      setIsModalOpen(true);
+      return;
+    }
+
     if (activeTrack?.id === track.id && isPlaying) {
       stopCurrentTrack();
       setIsPlaying(false);
@@ -98,7 +156,7 @@ export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
 
   const handleNextTrack = () => {
     if (!activeTrack) return;
-    const list = filteredTracks.length > 0 ? filteredTracks : ALL_RHYTHMS;
+    const list = filteredTracks.length > 0 ? filteredTracks : tracks;
     const currentIndex = list.findIndex((t) => t.id === activeTrack.id);
     const nextIndex = (currentIndex + 1) % list.length;
     togglePlayTrack(list[nextIndex]);
@@ -106,7 +164,7 @@ export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
 
   const handlePrevTrack = () => {
     if (!activeTrack) return;
-    const list = filteredTracks.length > 0 ? filteredTracks : ALL_RHYTHMS;
+    const list = filteredTracks.length > 0 ? filteredTracks : tracks;
     const currentIndex = list.findIndex((t) => t.id === activeTrack.id);
     const prevIndex = (currentIndex - 1 + list.length) % list.length;
     togglePlayTrack(list[prevIndex]);
@@ -141,7 +199,9 @@ export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
       setIsModalOpen(true);
     } else {
       togglePlayTrack(track);
-      setIsModalOpen(true);
+      if (!track.audioSrc) {
+        setIsModalOpen(true);
+      }
     }
   };
 
@@ -205,7 +265,7 @@ export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
               >
                 Playlist Oficial
               </StarBorder>
-              <span className="text-xs text-neutral-400 font-mono">• {ALL_RHYTHMS.length} faixas</span>
+              <span className="text-xs text-neutral-400 font-mono">• {tracks.length} faixas</span>
             </div>
 
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black font-syne text-white uppercase tracking-tight">
@@ -220,9 +280,10 @@ export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
             <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-3">
               <InteractiveHoverButton
                 onClick={() => {
-                  const first = filteredTracks[0] || ALL_RHYTHMS[0];
-                  togglePlayTrack(first);
-                  setIsModalOpen(true);
+                  const first = filteredTracks[0] || tracks[0];
+                  if (first) {
+                    togglePlayTrack(first);
+                  }
                 }}
                 className="px-6 py-3 text-xs font-bold uppercase tracking-wider"
               >
@@ -419,7 +480,7 @@ export const PlaylistPage: React.FC<PlaylistPageProps> = ({ onBackToHome }) => {
                     {/* Duration / Action buttons */}
                     <div className="col-span-5 sm:col-span-4 md:col-span-2 flex items-center justify-end gap-2 text-right">
                       <a
-                        href={`https://open.spotify.com/search/${encodeURIComponent('capoeira elite nago ' + track.name)}`}
+                        href={track.spotifyUrl || `https://open.spotify.com/search/${encodeURIComponent('capoeira elite nago ' + track.name)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}

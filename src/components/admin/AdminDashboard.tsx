@@ -24,11 +24,19 @@ import {
   Flame,
   Trash2,
   Pencil,
-  X
+  X,
+  MapPin,
+  Clock,
+  Phone,
+  ExternalLink,
+  Plus,
+  Building2,
+  Navigation,
+  UserCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { FileUpload } from '../ui/file-upload';
-import { CalendarDatePicker } from '../ui/calendar-date-picker';
-import { supabase } from '../../lib/supabase';
+import { supabase, uploadToStorage, fetchSpotifyMetadata } from '../../lib/supabase';
 
 interface AdminDashboardProps {
   onBackToHome?: () => void;
@@ -71,6 +79,23 @@ interface ContactRequest {
   message: string;
   date: string;
   status: 'pending' | 'answered' | 'archived';
+}
+
+export interface AdminAcademy {
+  id: string;
+  name: string;
+  city: string;
+  neighborhood: string;
+  address: string;
+  responsible: string;
+  days: string;
+  hours: string;
+  mapsUrl?: string;
+  embedQuery?: string;
+  whatsapp?: string;
+  students: number;
+  max: number;
+  growth: string;
 }
 
 const INITIAL_APPROVALS: StudentApproval[] = [
@@ -184,12 +209,87 @@ const INITIAL_REQUESTS: ContactRequest[] = [
   },
 ];
 
-const ACADEMIES_DATA = [
-  { name: 'Matriz Juiz de Fora (Centro)', students: 165, max: 180, teacher: 'Mestre Pinheiro', city: 'Juiz de Fora - MG', growth: '+18%' },
-  { name: 'Polo Benfica (Zona Norte)', students: 92, max: 100, teacher: 'Contramestre Soldado', city: 'Juiz de Fora - MG', growth: '+12%' },
-  { name: 'Polo São Pedro (Cidade Alta)', students: 78, max: 90, teacher: 'Prof. Dom Ruan', city: 'Juiz de Fora - MG', growth: '+24%' },
-  { name: 'Polo Santos Dumont', students: 54, max: 70, teacher: 'Instrutor Curió', city: 'Santos Dumont - MG', growth: '+8%' },
-  { name: 'Polo Laranjal', students: 39, max: 50, teacher: 'Professor Dom Ruan', city: 'Laranjal - MG', growth: '+15%' },
+const INITIAL_ACADEMIES: AdminAcademy[] = [
+  {
+    id: '930ae51d-bea9-41bb-9c53-18c304b399c6',
+    name: 'Polo Benfica (Zona Norte)',
+    city: 'Juiz de Fora - MG',
+    neighborhood: 'Zona Norte / Benfica',
+    address: 'Av. JK, 6263 - Academia M&M',
+    responsible: 'Contramestre Soldado',
+    days: 'Segunda, Quarta e Sexta',
+    hours: '19:30 às 21:00',
+    mapsUrl: 'https://maps.app.goo.gl/YQmeyfaP7Pj8gL3z6',
+    embedQuery: 'Av. Pres. Juscelino Kubitschek, 6263 - Benfica, Juiz de Fora - MG',
+    whatsapp: '5532984077391',
+    students: 92,
+    max: 100,
+    growth: '+12%',
+  },
+  {
+    id: '2faafeb7-db0e-4acb-9027-5b3906ff5656',
+    name: 'Matriz Juiz de Fora (Centro)',
+    city: 'Juiz de Fora - MG',
+    neighborhood: 'Centro / Matriz',
+    address: 'Rua Espírito Santo, 1115 - Centro',
+    responsible: 'Mestre Pinheiro',
+    days: 'Segunda a Sexta',
+    hours: '18:30 às 21:30',
+    mapsUrl: 'https://maps.google.com/?q=Rua+Espirito+Santo+Juiz+de+Fora',
+    embedQuery: 'Rua Espírito Santo, Juiz de Fora - MG',
+    whatsapp: '5532984077391',
+    students: 165,
+    max: 180,
+    growth: '+18%',
+  },
+  {
+    id: 'ceb7ce3a-ef7f-43cf-b373-cc1537b7d79a',
+    name: 'Polo São Pedro (Cidade Alta)',
+    city: 'Juiz de Fora - MG',
+    neighborhood: 'Cidade Alta / São Pedro',
+    address: 'Av. Presidente Costa e Silva, 1800 - São Pedro',
+    responsible: 'Prof. Dom Ruan',
+    days: 'Segunda, Quarta e Sexta',
+    hours: '19:00 às 20:30',
+    mapsUrl: 'https://maps.google.com/?q=Av+Presidente+Costa+e+Silva+Juiz+de+Fora',
+    embedQuery: 'Av. Presidente Costa e Silva, São Pedro, Juiz de Fora - MG',
+    whatsapp: '5532984190283',
+    students: 78,
+    max: 90,
+    growth: '+24%',
+  },
+  {
+    id: '249d908e-0600-4882-8d44-0bba8d26b7db',
+    name: 'Polo Laranjal',
+    city: 'Laranjal - MG',
+    neighborhood: 'Centro',
+    address: 'R. Jeremias Dias de Oliveira, S/N - Casa da Cultura',
+    responsible: 'Professor Dom Ruan',
+    days: 'Terça e Quinta',
+    hours: '18:00 às 20:00',
+    mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Casa+da+Cultura+Rua+Jeremias+Dias+de+Oliveira+Laranjal+MG',
+    embedQuery: 'R. Jeremias Dias de Oliveira, Laranjal - MG',
+    whatsapp: '5532984190283',
+    students: 39,
+    max: 50,
+    growth: '+15%',
+  },
+  {
+    id: '152d386e-ebb1-49e7-b9c7-9e0e4dc0df3a',
+    name: 'Polo Santos Dumont',
+    city: 'Santos Dumont - MG',
+    neighborhood: 'Centro',
+    address: 'Rua Sérgio Neves, 45 - Centro',
+    responsible: 'Instrutor Curió',
+    days: 'Terça e Quinta',
+    hours: '19:30 às 21:00',
+    mapsUrl: 'https://maps.google.com/?q=Santos+Dumont+MG',
+    embedQuery: 'Santos Dumont - MG',
+    whatsapp: '5532984077391',
+    students: 54,
+    max: 70,
+    growth: '+8%',
+  },
 ];
 
 const TIMELINE_ORDERS = [
@@ -208,7 +308,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
   const [approvals, setApprovals] = useState<StudentApproval[]>(INITIAL_APPROVALS);
   const [newsList, setNewsList] = useState<NewsItem[]>(INITIAL_NEWS);
   const [requests, setRequests] = useState<ContactRequest[]>(INITIAL_REQUESTS);
-  const [academiesList, setAcademiesList] = useState(ACADEMIES_DATA);
+  const [academiesList, setAcademiesList] = useState<AdminAcademy[]>(INITIAL_ACADEMIES);
   const [searchTerm, setSearchTerm] = useState('');
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null);
@@ -216,15 +316,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Direct Upload Form State
+  const [editingMedia, setEditingMedia] = useState<any | null>(null);
   const [directType, setDirectType] = useState<'music' | 'media'>('music');
   const [directTitle, setDirectTitle] = useState('');
   const [directAuthor, setDirectAuthor] = useState('');
   const [directCategory, setDirectCategory] = useState('Toques & Cantigas');
   const [directDescription, setDirectDescription] = useState('');
+  const [directSpotifyUrl, setDirectSpotifyUrl] = useState('');
   const [directAudioFiles, setDirectAudioFiles] = useState<File[]>([]);
   const [directThumbnailFiles, setDirectThumbnailFiles] = useState<File[]>([]);
   const [directMediaFiles, setDirectMediaFiles] = useState<File[]>([]);
   const [directLoading, setDirectLoading] = useState(false);
+  const [mediasList, setMediasList] = useState<any[]>([]);
 
   // News Form State
   const [editingNews, setEditingNews] = useState<NewsItem | null>(null);
@@ -238,6 +341,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
   const [newsIsFeatured, setNewsIsFeatured] = useState(false);
   const [newsCoverFiles, setNewsCoverFiles] = useState<File[]>([]);
   const [newsLoading, setNewsLoading] = useState(false);
+
+  // Academies Form & Delete Modal State
+  const [editingAcademy, setEditingAcademy] = useState<AdminAcademy | null>(null);
+  const [academyCity, setAcademyCity] = useState('Juiz de Fora - MG');
+  const [academyNeighborhood, setAcademyNeighborhood] = useState('');
+  const [academyAddress, setAcademyAddress] = useState('');
+  const [academyName, setAcademyName] = useState('');
+  const [academyResponsible, setAcademyResponsible] = useState('Contramestre Soldado');
+  const [academyDays, setAcademyDays] = useState('Segunda, Quarta e Sexta');
+  const [academyHours, setAcademyHours] = useState('19:30 às 21:00');
+  const [academyMapsUrl, setAcademyMapsUrl] = useState('');
+  const [academyWhatsapp, setAcademyWhatsapp] = useState('5532984077391');
+  const [academyStudents, setAcademyStudents] = useState<number>(50);
+  const [academyMax, setAcademyMax] = useState<number>(100);
+  const [academyLoading, setAcademyLoading] = useState(false);
+  const [academyToDelete, setAcademyToDelete] = useState<AdminAcademy | null>(null);
 
   // Real-time synchronization with Supabase
   useEffect(() => {
@@ -301,19 +420,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
         const { data: acadData } = await supabase
           .from('academies')
           .select('*')
-          .order('students_count', { ascending: false });
+          .order('created_at', { ascending: true });
 
         if (acadData && acadData.length > 0) {
           setAcademiesList(
             acadData.map((ac: any) => ({
-              name: ac.name,
-              students: ac.students_count,
-              max: ac.max_capacity,
-              teacher: ac.teacher,
-              city: ac.city,
-              growth: ac.growth_rate,
+              id: ac.id,
+              name: ac.name || ac.address || 'Unidade de Treino',
+              city: ac.city || 'Juiz de Fora - MG',
+              neighborhood: ac.neighborhood || 'Centro',
+              address: ac.address || ac.name || 'Endereço a definir',
+              responsible: ac.responsible || ac.teacher || 'Responsável',
+              days: ac.days || 'Segunda, Quarta e Sexta',
+              hours: ac.hours || '19:00 às 20:30',
+              mapsUrl: ac.maps_url || (ac.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ac.address + ', ' + ac.city)}` : ''),
+              embedQuery: ac.embed_query || `${ac.address || ac.name}, ${ac.city}`,
+              whatsapp: ac.whatsapp || '5532984077391',
+              students: Number(ac.students_count) || 0,
+              max: Number(ac.max_capacity) || 100,
+              growth: ac.growth_rate || '+10%',
             }))
           );
+        }
+        const { data: mediasData } = await supabase
+          .from('medias')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (mediasData && mediasData.length > 0) {
+          setMediasList(mediasData);
         }
       } catch (err) {
         console.warn('Supabase not yet populated or offline, using fallback state:', err);
@@ -336,6 +471,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
       .on('postgres_changes', { event: '*', schema: 'public', table: 'academies' }, () => {
         fetchSupabaseData();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'medias' }, () => {
+        fetchSupabaseData();
+      })
       .subscribe();
 
     return () => {
@@ -346,6 +484,208 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Academy Form Handlers
+  const handleStartEditAcademy = (item: AdminAcademy, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setActiveTab('academies');
+    setEditingAcademy(item);
+    setAcademyCity(item.city || 'Juiz de Fora - MG');
+    setAcademyNeighborhood(item.neighborhood || '');
+    setAcademyAddress(item.address || item.name || '');
+    setAcademyName(item.name || '');
+    setAcademyResponsible(item.responsible || 'Responsável');
+    setAcademyDays(item.days || 'Segunda, Quarta e Sexta');
+    setAcademyHours(item.hours || '19:30 às 21:00');
+    setAcademyMapsUrl(item.mapsUrl || '');
+    setAcademyWhatsapp(item.whatsapp || '5532984077391');
+    setAcademyStudents(item.students || 0);
+    setAcademyMax(item.max || 100);
+
+    setTimeout(() => {
+      const formElement = document.getElementById('academy-form-card');
+      if (formElement) {
+        formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+
+    showToast(`Editando polo: "${item.name || item.address}"`);
+  };
+
+  const handleCancelEditAcademy = () => {
+    setEditingAcademy(null);
+    setAcademyCity('Juiz de Fora - MG');
+    setAcademyNeighborhood('');
+    setAcademyAddress('');
+    setAcademyName('');
+    setAcademyResponsible('Contramestre Soldado');
+    setAcademyDays('Segunda, Quarta e Sexta');
+    setAcademyHours('19:30 às 21:00');
+    setAcademyMapsUrl('');
+    setAcademyWhatsapp('5532984077391');
+    setAcademyStudents(50);
+    setAcademyMax(100);
+  };
+
+  const handleAcademySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!academyCity.trim()) {
+      showToast('Informe a cidade da academia.');
+      return;
+    }
+    if (!academyAddress.trim()) {
+      showToast('Informe o endereço da academia.');
+      return;
+    }
+    if (!academyResponsible.trim()) {
+      showToast('Informe o responsável pela academia.');
+      return;
+    }
+
+    setAcademyLoading(true);
+
+    const finalNeighborhood = academyNeighborhood.trim() || 'Centro';
+    const finalName = academyName.trim() || `Polo ${finalNeighborhood} (${academyCity.trim().split('-')[0].trim()})`;
+    const finalEmbedQuery = `${academyAddress.trim()}, ${academyCity.trim()}`;
+    const directMapsUrl = academyMapsUrl.trim() || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(finalEmbedQuery)}`;
+
+    if (editingAcademy) {
+      // UPDATE EXISTING ACADEMY
+      const updatedItem: AdminAcademy = {
+        ...editingAcademy,
+        name: finalName,
+        city: academyCity.trim(),
+        neighborhood: finalNeighborhood,
+        address: academyAddress.trim(),
+        responsible: academyResponsible.trim(),
+        days: academyDays.trim(),
+        hours: academyHours.trim(),
+        mapsUrl: directMapsUrl,
+        embedQuery: finalEmbedQuery,
+        whatsapp: academyWhatsapp.trim() || '5532984077391',
+        students: Number(academyStudents) || 0,
+        max: Number(academyMax) || 100,
+      };
+
+      try {
+        const { error } = await supabase
+          .from('academies')
+          .update({
+            name: updatedItem.name,
+            city: updatedItem.city,
+            neighborhood: updatedItem.neighborhood,
+            address: updatedItem.address,
+            responsible: updatedItem.responsible,
+            teacher: updatedItem.responsible,
+            days: updatedItem.days,
+            hours: updatedItem.hours,
+            maps_url: updatedItem.mapsUrl,
+            embed_query: updatedItem.embedQuery,
+            whatsapp: updatedItem.whatsapp,
+            students_count: updatedItem.students,
+            max_capacity: updatedItem.max,
+          })
+          .eq('id', editingAcademy.id);
+
+        if (error) {
+          console.error('Erro ao atualizar academia no Supabase:', error);
+          showToast(`Aviso: Atualizado localmente (${error.message})`);
+        } else {
+          showToast('Academia atualizada e sincronizada no Supabase com sucesso!');
+        }
+      } catch (err: any) {
+        console.warn('Falha na comunicação:', err);
+        showToast('Academia atualizada localmente.');
+      }
+
+      setAcademiesList(prev => prev.map(a => (a.id === editingAcademy.id ? updatedItem : a)));
+      handleCancelEditAcademy();
+    } else {
+      // INSERT NEW ACADEMY
+      const newItem: AdminAcademy = {
+        id: `acad-${Date.now()}`,
+        name: finalName,
+        city: academyCity.trim(),
+        neighborhood: finalNeighborhood,
+        address: academyAddress.trim(),
+        responsible: academyResponsible.trim(),
+        days: academyDays.trim(),
+        hours: academyHours.trim(),
+        mapsUrl: directMapsUrl,
+        embedQuery: finalEmbedQuery,
+        whatsapp: academyWhatsapp.trim() || '5532984077391',
+        students: Number(academyStudents) || 0,
+        max: Number(academyMax) || 100,
+        growth: '+10%',
+      };
+
+      try {
+        const { data: insertedData, error } = await supabase
+          .from('academies')
+          .insert([
+            {
+              name: newItem.name,
+              city: newItem.city,
+              neighborhood: newItem.neighborhood,
+              address: newItem.address,
+              responsible: newItem.responsible,
+              teacher: newItem.responsible,
+              days: newItem.days,
+              hours: newItem.hours,
+              maps_url: newItem.mapsUrl,
+              embed_query: newItem.embedQuery,
+              whatsapp: newItem.whatsapp,
+              students_count: newItem.students,
+              max_capacity: newItem.max,
+              growth_rate: '+10%',
+            },
+          ])
+          .select();
+
+        if (error) {
+          console.error('Erro ao cadastrar academia no Supabase:', error);
+          showToast(`Aviso: Academia inserida localmente (${error.message})`);
+          setAcademiesList(prev => [...prev, newItem]);
+        } else {
+          if (insertedData && insertedData.length > 0) {
+            newItem.id = insertedData[0].id;
+          }
+          setAcademiesList(prev => [...prev.filter(a => a.id !== newItem.id), newItem]);
+          showToast('Nova academia cadastrada e sincronizada no Supabase com sucesso!');
+        }
+      } catch (err: any) {
+        console.warn('Falha na comunicação:', err);
+        setAcademiesList(prev => [...prev, newItem]);
+        showToast('Academia cadastrada localmente.');
+      }
+
+      handleCancelEditAcademy();
+    }
+
+    setAcademyLoading(false);
+  };
+
+  const handleConfirmDeleteAcademy = async () => {
+    if (!academyToDelete) return;
+    const target = academyToDelete;
+    if (editingAcademy?.id === target.id) {
+      handleCancelEditAcademy();
+    }
+    setAcademiesList(prev => prev.filter(a => a.id !== target.id));
+    setAcademyToDelete(null);
+
+    try {
+      const { error } = await supabase.from('academies').delete().eq('id', target.id);
+      if (error) {
+        console.warn('Erro ao deletar academia no Supabase:', error);
+        showToast(`Aviso: Removido localmente (${error.message})`);
+      } else {
+        showToast(`Polo "${target.name || target.address}" removido do Supabase com sucesso.`);
+      }
+    } catch {
+      showToast('Polo removido.');
+    }
   };
 
   const handleApprove = async (id: string) => {
@@ -393,56 +733,208 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
     }
   };
 
+  const handleStartEditMedia = (item: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setActiveTab('direct_upload');
+    setEditingMedia(item);
+    setDirectType(item.type === 'media' ? 'media' : 'music');
+    setDirectTitle(item.title || '');
+    setDirectAuthor(item.author || 'Elite Nagô');
+    setDirectCategory(item.category || 'Toques & Cantigas');
+    setDirectDescription(item.description || '');
+    setDirectSpotifyUrl(item.spotify_url || '');
+    setDirectAudioFiles([]);
+    setDirectThumbnailFiles([]);
+    setDirectMediaFiles([]);
+
+    setTimeout(() => {
+      const formElement = document.getElementById('direct-upload-form-card');
+      if (formElement) {
+        formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+
+    showToast(`Editando mídia: "${item.title}"`);
+  };
+
+  const handleCancelEditMedia = () => {
+    setEditingMedia(null);
+    setDirectTitle('');
+    setDirectAuthor('');
+    setDirectCategory('Toques & Cantigas');
+    setDirectDescription('');
+    setDirectSpotifyUrl('');
+    setDirectAudioFiles([]);
+    setDirectThumbnailFiles([]);
+    setDirectMediaFiles([]);
+  };
+
+  const handleSpotifyUrlBlur = async () => {
+    const clean = directSpotifyUrl.trim();
+    if (!clean || !clean.includes('spotify.com')) return;
+    try {
+      const meta = await fetchSpotifyMetadata(clean);
+      if (meta) {
+        if (!directTitle.trim() && meta.title) {
+          setDirectTitle(meta.title);
+        }
+        if ((!directAuthor.trim() || directAuthor === 'Elite Nagô') && meta.author) {
+          setDirectAuthor(meta.author);
+        }
+        showToast(`Capa e informações identificadas do Spotify: "${meta.title || 'Música'}"`);
+      }
+    } catch {}
+  };
+
+  const handleDeleteMedia = async (id: string, title?: string) => {
+    if (editingMedia?.id === id) {
+      handleCancelEditMedia();
+    }
+    setMediasList(prev => prev.filter(m => m.id !== id));
+    try {
+      const { error } = await supabase.from('medias').delete().eq('id', id);
+      if (error) {
+        console.warn('Erro ao deletar mídia do Supabase:', error);
+      } else {
+        showToast(`Mídia "${title || 'Música'}" removida do Supabase.`);
+      }
+    } catch {
+      showToast('Mídia removida.');
+    }
+  };
+
   const handleDirectSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!directTitle.trim()) {
       showToast('Por favor, informe o título da mídia.');
       return;
     }
-    if (directType === 'music' && directAudioFiles.length === 0) {
-      showToast('Por favor, selecione o arquivo de áudio MP3.');
+
+    const cleanSpotify = directSpotifyUrl.trim();
+    const hasAudio = directAudioFiles.length > 0;
+    const hasSpotify = cleanSpotify.length > 0;
+    const existingUrl = editingMedia?.url;
+
+    // Condition: If spotify link is present or already has existing media audio URL, MP3 is optional.
+    if (directType === 'music' && !hasAudio && !hasSpotify && !existingUrl) {
+      showToast('Para músicas, informe ao menos o link do Spotify ou selecione um arquivo MP3.');
       return;
     }
-    if (directType === 'media' && directMediaFiles.length === 0) {
+    if (directType === 'media' && directMediaFiles.length === 0 && !existingUrl) {
       showToast('Por favor, selecione ao menos uma foto ou vídeo.');
       return;
     }
 
     setDirectLoading(true);
 
-    const audioUrl = directAudioFiles.length > 0
-      ? URL.createObjectURL(directAudioFiles[0])
-      : 'https://cdn.freesound.org/previews/518/518884_10672049-lq.mp3';
+    let audioUrl = editingMedia?.url || '';
+    if (hasAudio) {
+      const uploaded = await uploadToStorage(directAudioFiles[0], 'audio');
+      audioUrl = uploaded || URL.createObjectURL(directAudioFiles[0]);
+    } else if (!editingMedia && !hasSpotify) {
+      audioUrl = 'https://cdn.freesound.org/previews/518/518884_10672049-lq.mp3';
+    }
 
-    const thumbnailUrl = directThumbnailFiles.length > 0
-      ? URL.createObjectURL(directThumbnailFiles[0])
-      : (directType === 'music' ? 'https://i.imgur.com/A46hzMt.jpeg' : undefined);
+    // Determine thumbnail:
+    // 1. Newly uploaded thumbnail file
+    // 2. Existing thumbnail if valid
+    // 3. Cover automatically fetched from Spotify oEmbed
+    // 4. Official EN Brand Logo (/logos/en_thumb.png)
+    let thumbnailUrl = editingMedia?.thumbnail_url;
+    if (directThumbnailFiles.length > 0) {
+      const uploaded = await uploadToStorage(directThumbnailFiles[0], 'thumbnails');
+      thumbnailUrl = uploaded || URL.createObjectURL(directThumbnailFiles[0]);
+    } else if ((!thumbnailUrl || thumbnailUrl === 'https://i.imgur.com/A46hzMt.jpeg') && hasSpotify) {
+      const spotifyMeta = await fetchSpotifyMetadata(cleanSpotify);
+      if (spotifyMeta?.thumbnail_url) {
+        thumbnailUrl = spotifyMeta.thumbnail_url;
+      }
+    }
 
-    const mediaUrl = directMediaFiles.length > 0
-      ? URL.createObjectURL(directMediaFiles[0])
-      : undefined;
+    if (!thumbnailUrl || thumbnailUrl === 'https://i.imgur.com/A46hzMt.jpeg') {
+      thumbnailUrl = '/logos/en_thumb.png';
+    }
+
+    let mediaUrl = editingMedia?.url || undefined;
+    if (directMediaFiles.length > 0) {
+      const uploaded = await uploadToStorage(directMediaFiles[0], 'gallery');
+      mediaUrl = uploaded || URL.createObjectURL(directMediaFiles[0]);
+    }
+
+    if (editingMedia) {
+      const updatePayload = {
+        title: directTitle.trim(),
+        type: directType,
+        author: directAuthor.trim() || 'Elite Nagô',
+        category: directCategory,
+        description: directDescription.trim(),
+        url: directType === 'music' ? (audioUrl || '') : (mediaUrl || '/logos/en_thumb.png'),
+        thumbnail_url: thumbnailUrl,
+        spotify_url: hasSpotify ? cleanSpotify : null,
+      };
+
+      try {
+        const { error } = await supabase
+          .from('medias')
+          .update(updatePayload)
+          .eq('id', editingMedia.id);
+
+        if (error) {
+          console.error('Erro ao atualizar mídia no Supabase:', error);
+          showToast(`Aviso: Atualizado localmente (${error.message})`);
+        } else {
+          showToast(`Mídia "${directTitle}" atualizada no Supabase com sucesso!`);
+        }
+      } catch {
+        showToast(`Mídia "${directTitle}" atualizada localmente.`);
+      }
+
+      setMediasList(prev =>
+        prev.map(m => (m.id === editingMedia.id ? { ...m, ...updatePayload } : m))
+      );
+
+      handleCancelEditMedia();
+      setDirectLoading(false);
+      return;
+    }
+
+    const payload = {
+      title: directTitle.trim(),
+      type: directType,
+      author: directAuthor.trim() || 'Elite Nagô',
+      category: directCategory,
+      description: directDescription.trim(),
+      url: directType === 'music' ? (audioUrl || '') : (mediaUrl || '/logos/en_thumb.png'),
+      thumbnail_url: thumbnailUrl,
+      is_featured: true,
+      spotify_url: hasSpotify ? cleanSpotify : null,
+    };
 
     try {
-      await supabase.from('medias').insert([
-        {
-          title: directTitle,
-          type: directType,
-          author: directAuthor || 'Elite Nagô',
-          category: directCategory,
-          description: directDescription,
-          url: directType === 'music' ? audioUrl : (mediaUrl || 'https://i.imgur.com/A46hzMt.jpeg'),
-          thumbnail_url: thumbnailUrl || 'https://i.imgur.com/A46hzMt.jpeg',
-          is_featured: true,
-        },
-      ]);
+      const { data: insertedData, error } = await supabase
+        .from('medias')
+        .insert([payload])
+        .select();
+
+      if (error) {
+        console.error('Erro ao cadastrar mídia no Supabase:', error);
+        showToast(`Aviso: Publicado localmente (${error.message})`);
+        setMediasList(prev => [{ ...payload, id: `local-${Date.now()}` }, ...prev]);
+      } else {
+        if (insertedData && insertedData.length > 0) {
+          setMediasList(prev => [insertedData[0], ...prev]);
+        }
+        showToast(`Mídia "${directTitle}" sincronizada no Supabase com sucesso!`);
+      }
     } catch {
-      // Fallback
+      setMediasList(prev => [{ ...payload, id: `local-${Date.now()}` }, ...prev]);
+      showToast(`Mídia "${directTitle}" adicionada localmente.`);
     }
 
     setDirectLoading(false);
-    showToast(`Mídia "${directTitle}" [${directCategory}] salva no Supabase com sucesso!`);
     setDirectTitle('');
     setDirectAuthor('');
+    setDirectSpotifyUrl('');
     setDirectCategory('Toques & Cantigas');
     setDirectDescription('');
     setDirectAudioFiles([]);
@@ -489,11 +981,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
       showToast('Informe o título da notícia.');
       return;
     }
-    setNewsLoading(true);
-
-    const coverUrl = newsCoverFiles.length > 0
-      ? URL.createObjectURL(newsCoverFiles[0])
-      : (editingNews?.image || 'https://i.imgur.com/A46hzMt.jpeg');
+    let coverUrl = editingNews?.image || 'https://i.imgur.com/A46hzMt.jpeg';
+    if (newsCoverFiles.length > 0) {
+      const uploaded = await uploadToStorage(newsCoverFiles[0], 'news');
+      coverUrl = uploaded || URL.createObjectURL(newsCoverFiles[0]);
+    }
 
     const cleanTag = newsTag.trim().toUpperCase() || 'EVENTOS & CERIMÔNIAS';
 
@@ -645,7 +1137,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
               <img src="/en.svg" alt="Elite Nagô" className="h-6 w-6 object-contain filter invert brightness-0" />
             </div>
             <div className="leading-tight">
-              <h1 className="text-sm font-black text-white tracking-tight font-syne">Vite Soft UI</h1>
+              <h1 className="text-sm font-black text-white tracking-tight font-syne">Elite Nagô</h1>
               <span className="text-[10px] font-bold text-[#EEDC9A] uppercase tracking-wider">Elite Nagô Admin</span>
             </div>
           </div>
@@ -654,9 +1146,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
           <nav className="space-y-1 text-xs font-semibold">
             {[
               { id: 'overview', label: 'Dashboard', icon: LayoutDashboard, color: 'from-emerald-400 to-teal-500' },
-              { id: 'academies', label: 'Tables (Academias)', icon: Users, color: 'from-blue-500 to-cyan-500' },
-              { id: 'donations', label: 'Billing (Doações)', icon: DollarSign, color: 'from-violet-500 to-purple-600' },
-              { id: 'requests', label: 'Messages (Contatos)', icon: MessageSquare, color: 'from-amber-500 to-orange-500' },
+              { id: 'academies', label: 'Academias', icon: Users, color: 'from-blue-500 to-cyan-500' },
+              { id: 'donations', label: 'Doações', icon: DollarSign, color: 'from-violet-500 to-purple-600' },
+              { id: 'requests', label: 'Contatos', icon: MessageSquare, color: 'from-amber-500 to-orange-500' },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -664,16 +1156,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id as any)}
-                  className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-2xl transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-white/10 text-white font-bold shadow-lg shadow-black/40 border border-white/15'
-                      : 'text-neutral-400 hover:text-white hover:bg-white/5'
-                  }`}
+                  className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-2xl transition-all cursor-pointer ${isActive
+                    ? 'bg-white/10 text-white font-bold shadow-lg shadow-black/40 border border-white/15'
+                    : 'text-neutral-400 hover:text-white hover:bg-white/5'
+                    }`}
                 >
                   <div
-                    className={`p-2 rounded-xl flex items-center justify-center shadow-md ${
-                      isActive ? `bg-gradient-to-tr ${item.color} text-black` : 'bg-[#15151e] text-neutral-300'
-                    }`}
+                    className={`p-2 rounded-xl flex items-center justify-center shadow-md ${isActive ? `bg-gradient-to-tr ${item.color} text-black` : 'bg-[#15151e] text-neutral-300'
+                      }`}
                   >
                     <Icon className="w-4 h-4" />
                   </div>
@@ -697,16 +1187,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id as any)}
-                  className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-2xl transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-white/10 text-white font-bold shadow-lg shadow-black/40 border border-white/15'
-                      : 'text-neutral-400 hover:text-white hover:bg-white/5'
-                  }`}
+                  className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-2xl transition-all cursor-pointer ${isActive
+                    ? 'bg-white/10 text-white font-bold shadow-lg shadow-black/40 border border-white/15'
+                    : 'text-neutral-400 hover:text-white hover:bg-white/5'
+                    }`}
                 >
                   <div
-                    className={`p-2 rounded-xl flex items-center justify-center shadow-md ${
-                      isActive ? `bg-gradient-to-tr ${item.color} text-black` : 'bg-[#15151e] text-neutral-300'
-                    }`}
+                    className={`p-2 rounded-xl flex items-center justify-center shadow-md ${isActive ? `bg-gradient-to-tr ${item.color} text-black` : 'bg-[#15151e] text-neutral-300'
+                      }`}
                   >
                     <Icon className="w-4 h-4" />
                   </div>
@@ -859,11 +1347,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
 
             {/* ROW 2: 2 Featured Cards ("Built by developers" & "Work with the rockets") */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-              {/* Left 7-Col Card: Built by developers / Vite Soft UI */}
+              {/* Left 7-Col Card: Built by developers / Painel Elite Nagô */}
               <div className="lg:col-span-7 p-6 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl flex flex-col sm:flex-row items-center justify-between gap-6 relative overflow-hidden">
                 <div className="flex-1 space-y-3 z-10">
                   <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Built by developers</p>
-                  <h3 className="text-xl font-bold text-white font-syne">Vite Soft UI Dashboard</h3>
+                  <h3 className="text-xl font-bold text-white font-syne">Elite Nagô Dashboard</h3>
                   <p className="text-xs text-neutral-400 leading-relaxed max-w-sm">
                     Painel unificado com sincronização Supabase Realtime, gestão de academias, aprovação de áudios MP3 e publicação direta.
                   </p>
@@ -1023,17 +1511,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
 
             {/* ROW 4: Projects (Academias Table) & Orders Overview (Timeline) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-              {/* Left 8-Col Card: Projects & Academies Table */}
+              {/* Left 8-Col Card: Projects & Academias Table */}
               <div className="lg:col-span-8 p-6 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h4 className="text-sm font-bold text-white font-syne">Projects & Academias</h4>
                     <p className="text-xs text-neutral-400">
-                      <strong className="text-emerald-400">5 Polos ativos</strong> sincronizados
+                      <strong className="text-emerald-400">{academiesList.length} Polos ativos</strong> sincronizados com Supabase
                     </p>
                   </div>
-                  <button onClick={() => setActiveTab('academies')} className="text-xs font-bold text-[#EEDC9A] hover:underline">
-                    Ver todos
+                  <button onClick={() => setActiveTab('academies')} className="text-xs font-bold text-[#EEDC9A] hover:underline cursor-pointer">
+                    Gerenciar todos
                   </button>
                 </div>
 
@@ -1045,13 +1533,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                         <th className="pb-3 font-bold">Responsável</th>
                         <th className="pb-3 font-bold text-center">Matriculados</th>
                         <th className="pb-3 font-bold text-center">Ocupação</th>
+                        <th className="pb-3 font-bold text-right">Ação</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {academiesList.map((acad) => {
-                        const fillPct = Math.round((acad.students / acad.max) * 100);
+                        const fillPct = Math.round(((acad.students || 0) / (acad.max || 100)) * 100);
                         return (
-                          <tr key={acad.name} className="hover:bg-white/5 transition-colors">
+                          <tr key={acad.id} className="hover:bg-white/5 transition-colors group">
                             <td className="py-3.5 pr-3">
                               <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-xs font-bold text-[#EEDC9A]">
@@ -1059,22 +1548,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                                 </div>
                                 <div>
                                   <span className="font-bold text-white block">{acad.name}</span>
-                                  <span className="text-[10px] text-neutral-400">{acad.city}</span>
+                                  <span className="text-[10px] text-neutral-400">{acad.city} • {acad.neighborhood}</span>
                                 </div>
                               </div>
                             </td>
-                            <td className="py-3.5 text-neutral-300 font-medium">{acad.teacher}</td>
-                            <td className="py-3.5 text-center font-bold text-white">{acad.students}</td>
+                            <td className="py-3.5 text-neutral-300 font-medium">{acad.responsible}</td>
+                            <td className="py-3.5 text-center font-bold text-white">{acad.students} / {acad.max}</td>
                             <td className="py-3.5">
                               <div className="flex items-center justify-center gap-2 max-w-[120px] mx-auto">
                                 <span className="text-[10px] font-bold text-neutral-400">{fillPct}%</span>
                                 <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
                                   <div
                                     className={`h-full rounded-full ${fillPct > 90 ? 'bg-amber-400' : 'bg-emerald-400'}`}
-                                    style={{ width: `${fillPct}%` }}
+                                    style={{ width: `${Math.min(fillPct, 100)}%` }}
                                   />
                                 </div>
                               </div>
+                            </td>
+                            <td className="py-3.5 text-right">
+                              <button
+                                onClick={() => handleStartEditAcademy(acad)}
+                                className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-[#EEDC9A] border border-[#EEDC9A]/30 transition-all cursor-pointer inline-flex items-center gap-1 text-[11px]"
+                                title="Editar no Gerenciador"
+                              >
+                                <Pencil className="w-3 h-3" />
+                                <span className="hidden sm:inline">Editar</span>
+                              </button>
                             </td>
                           </tr>
                         );
@@ -1112,22 +1611,472 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
           </div>
         )}
 
-        {/* TAB 2: ACADEMIES LIST */}
+        {/* TAB 2: ACADEMIES MANAGEMENT SUITE (CRUD) */}
         {activeTab === 'academies' && (
-          <div className="p-6 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl space-y-5">
-            <h3 className="text-lg font-bold text-white font-syne">Polos & Unidades de Treino</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {academiesList.map((acad) => (
-                <div key={acad.name} className="p-5 rounded-2xl bg-white/5 border border-white/10">
-                  <span className="text-xs font-bold text-[#EEDC9A]">{acad.city}</span>
-                  <h4 className="text-base font-bold text-white font-syne mt-1">{acad.name}</h4>
-                  <p className="text-xs text-neutral-400 mb-3">Responsável: {acad.teacher}</p>
-                  <div className="flex justify-between text-xs py-2 border-t border-white/5">
-                    <span>Matriculados: <strong>{acad.students}</strong></span>
-                    <span>Capacidade: <strong>{acad.max}</strong></span>
+          <div className="space-y-6">
+            {/* Header / Intro Card */}
+            <div className="p-6 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg sm:text-xl font-bold text-white font-syne flex items-center gap-2.5">
+                  <Building2 className="w-5 h-5 text-[#EEDC9A]" />
+                  Gerenciador de Academias & Polos
+                </h3>
+                <p className="text-xs text-neutral-400 mt-1 max-w-2xl leading-relaxed">
+                  Cadastre, edite e remova unidades exibidas na seção <strong>"Onde Treinar"</strong> do site. Todas as alterações são sincronizadas em tempo real no Supabase.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2.5 self-start sm:self-center">
+                <span className="px-3.5 py-1.5 rounded-2xl bg-white/5 border border-white/10 text-xs text-[#EEDC9A] font-bold">
+                  {academiesList.length} Unidades Ativas
+                </span>
+                {editingAcademy && (
+                  <button
+                    onClick={handleCancelEditAcademy}
+                    className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-neutral-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    Cancelar Edição
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* FORM CARD (INSERT & EDIT) */}
+            <div id="academy-form-card" className="p-6 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+                <div>
+                  <h4 className="text-base font-bold text-white font-syne flex items-center gap-2">
+                    {editingAcademy ? (
+                      <span className="flex items-center gap-2 text-amber-400">
+                        <Pencil className="w-4 h-4" />
+                        Editar Unidade de Treino
+                        <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40 uppercase font-sans font-bold">
+                          Modo Edição
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2 text-white">
+                        <Plus className="w-4 h-4 text-[#EEDC9A]" />
+                        Inserir Nova Academia / Polo de Treino
+                      </span>
+                    )}
+                  </h4>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    {editingAcademy
+                      ? `Alterando dados do polo "${editingAcademy.name || editingAcademy.address}". Clique em Salvar para atualizar no Supabase.`
+                      : 'Preencha todos os campos abaixo para disponibilizar a unidade no site oficial e no mapa interativo.'}
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleAcademySubmit} className="space-y-4">
+                {/* ROW 1: Cidade, Bairro e Nome do Polo */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-300 block mb-1">
+                      Cidade / UF <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={academyCity}
+                      onChange={(e) => setAcademyCity(e.target.value)}
+                      placeholder="Ex: Juiz de Fora - MG"
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white focus:border-[#EEDC9A] outline-none"
+                    />
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {['Juiz de Fora - MG', 'Laranjal - MG', 'Santos Dumont - MG', 'Matias Barbosa - MG'].map((preset) => (
+                        <button
+                          type="button"
+                          key={preset}
+                          onClick={() => setAcademyCity(preset)}
+                          className="text-[9px] px-2 py-0.5 rounded-md bg-white/5 hover:bg-[#EEDC9A]/20 text-neutral-300 hover:text-[#EEDC9A] border border-white/10 transition-colors cursor-pointer"
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-300 block mb-1">
+                      Bairro / Região <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={academyNeighborhood}
+                      onChange={(e) => setAcademyNeighborhood(e.target.value)}
+                      placeholder="Ex: Zona Norte / Benfica"
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white focus:border-[#EEDC9A] outline-none"
+                    />
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {['Zona Norte / Benfica', 'Cidade do Sol', 'Cidade Alta / São Pedro', 'Centro'].map((preset) => (
+                        <button
+                          type="button"
+                          key={preset}
+                          onClick={() => setAcademyNeighborhood(preset)}
+                          className="text-[9px] px-2 py-0.5 rounded-md bg-white/5 hover:bg-[#EEDC9A]/20 text-neutral-300 hover:text-[#EEDC9A] border border-white/10 transition-colors cursor-pointer"
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-300 block mb-1">
+                      Nome da Unidade / Polo <span className="text-neutral-500">(Opcional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={academyName}
+                      onChange={(e) => setAcademyName(e.target.value)}
+                      placeholder="Ex: Polo Benfica (Zona Norte)"
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white focus:border-[#EEDC9A] outline-none"
+                    />
+                    <span className="text-[10px] text-neutral-500 block mt-1">
+                      Se vazio, gerado como "Polo {academyNeighborhood || 'Unidade'}"
+                    </span>
                   </div>
                 </div>
-              ))}
+
+                {/* ROW 2: Endereço (Texto) e Responsável */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-300 block mb-1">
+                      Endereço Completo (Texto de Exibição no Card) <span className="text-rose-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <MapPin className="w-3.5 h-3.5 text-[#EEDC9A] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        required
+                        value={academyAddress}
+                        onChange={(e) => setAcademyAddress(e.target.value)}
+                        placeholder="Ex: Av. JK, 6263 - Academia M&M"
+                        className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white focus:border-[#EEDC9A] outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-300 block mb-1">
+                      Responsável / Mestre / Professor <span className="text-rose-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <UserCheck className="w-3.5 h-3.5 text-[#EEDC9A] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        required
+                        value={academyResponsible}
+                        onChange={(e) => setAcademyResponsible(e.target.value)}
+                        placeholder="Ex: Contramestre Soldado"
+                        className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white focus:border-[#EEDC9A] outline-none"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {['Contramestre Soldado', 'Mestre Pinheiro', 'Professor Dom Ruan', 'Instrutor Curió'].map((preset) => (
+                        <button
+                          type="button"
+                          key={preset}
+                          onClick={() => setAcademyResponsible(preset)}
+                          className="text-[9px] px-2 py-0.5 rounded-md bg-white/5 hover:bg-[#EEDC9A]/20 text-neutral-300 hover:text-[#EEDC9A] border border-white/10 transition-colors cursor-pointer"
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ROW 3: Dias de Treino e Horário */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-300 block mb-1">
+                      Dias de Treino <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={academyDays}
+                      onChange={(e) => setAcademyDays(e.target.value)}
+                      placeholder="Ex: Segunda, Quarta e Sexta"
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white focus:border-[#EEDC9A] outline-none"
+                    />
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {['Segunda, Quarta e Sexta', 'Terça e Quinta', 'Segunda a Sexta', 'Sábados (Aulão)'].map((preset) => (
+                        <button
+                          type="button"
+                          key={preset}
+                          onClick={() => setAcademyDays(preset)}
+                          className="text-[9px] px-2 py-0.5 rounded-md bg-white/5 hover:bg-[#EEDC9A]/20 text-neutral-300 hover:text-[#EEDC9A] border border-white/10 transition-colors cursor-pointer"
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-300 block mb-1">
+                      Horário das Aulas <span className="text-rose-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <Clock className="w-3.5 h-3.5 text-[#EEDC9A] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        required
+                        value={academyHours}
+                        onChange={(e) => setAcademyHours(e.target.value)}
+                        placeholder="Ex: 19:30 às 21:00"
+                        className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white focus:border-[#EEDC9A] outline-none"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {['19:30 às 21:00', '19:00 às 20:30', '18:00 às 20:00', '09:00 às 11:00'].map((preset) => (
+                        <button
+                          type="button"
+                          key={preset}
+                          onClick={() => setAcademyHours(preset)}
+                          className="text-[9px] px-2 py-0.5 rounded-md bg-white/5 hover:bg-[#EEDC9A]/20 text-neutral-300 hover:text-[#EEDC9A] border border-white/10 transition-colors cursor-pointer"
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ROW 4: Link do Google Maps e WhatsApp */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-300 block mb-1">
+                      Link do Google Maps <span className="text-neutral-500">(URL para abrir no GPS/Maps)</span>
+                    </label>
+                    <div className="relative">
+                      <Navigation className="w-3.5 h-3.5 text-[#EEDC9A] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="url"
+                        value={academyMapsUrl}
+                        onChange={(e) => setAcademyMapsUrl(e.target.value)}
+                        placeholder="Ex: https://maps.app.goo.gl/YQmeyfaP7Pj8gL3z6"
+                        className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white focus:border-[#EEDC9A] outline-none"
+                      />
+                    </div>
+                    <span className="text-[10px] text-neutral-500 block mt-1">
+                      Se não informado, será gerado automaticamente um link de busca pelo endereço e cidade.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-300 block mb-1">
+                      WhatsApp para Agendar Aula Grátis <span className="text-neutral-500">(Somente números com DDD)</span>
+                    </label>
+                    <div className="relative">
+                      <Phone className="w-3.5 h-3.5 text-[#EEDC9A] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={academyWhatsapp}
+                        onChange={(e) => setAcademyWhatsapp(e.target.value)}
+                        placeholder="Ex: 5532984077391"
+                        className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white focus:border-[#EEDC9A] outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* ROW 5: Métricas de Gestão (Matriculados e Capacidade) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-300 block mb-1">Alunos Matriculados</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={academyStudents}
+                      onChange={(e) => setAcademyStudents(parseInt(e.target.value) || 0)}
+                      className="w-full px-4 py-2 rounded-xl bg-black/50 border border-white/10 text-xs text-white focus:border-[#EEDC9A] outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-neutral-300 block mb-1">Capacidade Máxima da Turma</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={academyMax}
+                      onChange={(e) => setAcademyMax(parseInt(e.target.value) || 100)}
+                      className="w-full px-4 py-2 rounded-xl bg-black/50 border border-white/10 text-xs text-white focus:border-[#EEDC9A] outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  {editingAcademy && (
+                    <button
+                      type="button"
+                      onClick={handleCancelEditAcademy}
+                      className="px-5 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-all cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={academyLoading}
+                    className={`px-6 py-2.5 rounded-2xl font-bold text-xs shadow-lg cursor-pointer hover:scale-105 active:scale-95 transition-all ${editingAcademy
+                      ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-black shadow-amber-500/20'
+                      : 'bg-gradient-to-r from-[#EEDC9A] to-[#d4be6e] text-black shadow-[#EEDC9A]/20'
+                      }`}
+                  >
+                    {academyLoading
+                      ? 'Salvando no Supabase...'
+                      : editingAcademy
+                        ? 'Salvar Alterações no Supabase'
+                        : 'Cadastrar Academia no Supabase'}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* LIST OF REGISTERED ACADEMIES (CARDS GRID) */}
+            <div className="p-6 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-base font-bold text-white font-syne">Polos & Unidades Cadastradas</h4>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Estas informações são exibidas nos cards da página principal e no agendamento via WhatsApp.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {academiesList.map((acad) => {
+                  const isBeingEdited = editingAcademy?.id === acad.id;
+                  const fillPct = Math.round(((acad.students || 0) / (acad.max || 100)) * 100);
+                  const directMapUrl = acad.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(acad.address + ', ' + acad.city)}`;
+
+                  return (
+                    <div
+                      key={acad.id}
+                      className={`p-5 rounded-3xl border transition-all flex flex-col justify-between relative overflow-hidden ${isBeingEdited
+                        ? 'bg-amber-500/10 border-amber-400/50 shadow-xl shadow-amber-500/10'
+                        : 'bg-white/5 border-white/10 hover:border-[#EEDC9A]/40 hover:bg-white/[0.07]'
+                        }`}
+                    >
+                      <div className="space-y-3">
+                        {/* Top City and Neighborhood */}
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-syne font-bold uppercase tracking-wider bg-[#EEDC9A]/15 text-[#EEDC9A] border border-[#EEDC9A]/30">
+                            {acad.city}
+                          </span>
+                          <span className="text-xs text-neutral-400 font-mono truncate text-right">
+                            {acad.neighborhood}
+                          </span>
+                        </div>
+
+                        {/* Address Title */}
+                        <div>
+                          <h5 className="text-base font-bold font-syne text-white leading-snug line-clamp-2">
+                            {acad.address}
+                          </h5>
+                          {acad.name && acad.name !== acad.address && (
+                            <span className="text-[11px] text-[#EEDC9A]/80 font-medium block mt-0.5">
+                              {acad.name}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Details (Responsible & Days/Hours) */}
+                        <div className="space-y-2 py-2 border-y border-white/5 text-xs text-neutral-300">
+                          <div className="flex items-center gap-2">
+                            <UserCheck className="w-3.5 h-3.5 text-[#EEDC9A] shrink-0" />
+                            <span className="truncate">
+                              Responsável: <strong className="text-white font-semibold">{acad.responsible}</strong>
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-3.5 h-3.5 text-[#EEDC9A] shrink-0" />
+                            <span className="truncate">
+                              {acad.days} • <strong className="text-[#EEDC9A] font-semibold">{acad.hours}</strong>
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Maps Link & WhatsApp Button */}
+                        <div className="flex items-center gap-2 pt-1">
+                          <a
+                            href={directMapUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 py-1.5 px-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-semibold text-neutral-300 hover:text-white flex items-center justify-center gap-1.5 transition-colors"
+                            title="Abrir no Google Maps"
+                          >
+                            <ExternalLink className="w-3 h-3 text-[#EEDC9A]" />
+                            <span>Ver no Maps</span>
+                          </a>
+
+                          <a
+                            href={`https://wa.me/${acad.whatsapp || '5532984077391'}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="py-1.5 px-2.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-[11px] font-semibold text-emerald-400 flex items-center gap-1 transition-colors"
+                            title="Testar link WhatsApp"
+                          >
+                            <Phone className="w-3 h-3" />
+                            <span>WhatsApp</span>
+                          </a>
+                        </div>
+
+                        {/* Students Progress */}
+                        <div className="space-y-1 pt-1">
+                          <div className="flex justify-between text-[11px] text-neutral-400">
+                            <span>Matriculados: <strong className="text-white">{acad.students}</strong></span>
+                            <span>Capacidade: <strong className="text-white">{acad.max}</strong></span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${fillPct > 90 ? 'bg-amber-400' : 'bg-emerald-400'}`}
+                              style={{ width: `${Math.min(fillPct, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Action Footer */}
+                      <div className="flex items-center justify-end gap-2 pt-4 mt-3 border-t border-white/5">
+                        <button
+                          type="button"
+                          onClick={(e) => handleStartEditAcademy(acad, e)}
+                          className={`px-3 py-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold ${isBeingEdited
+                            ? 'bg-amber-400 text-black border-amber-400'
+                            : 'bg-amber-500/10 hover:bg-amber-500/20 text-[#EEDC9A] hover:text-white border-[#EEDC9A]/30'
+                            }`}
+                          title="Alterar dados da academia"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>Editar</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAcademyToDelete(acad);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                          title="Excluir polo"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Excluir</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
@@ -1207,35 +2156,66 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
           </div>
         )}
 
-        {/* TAB 6: DIRECT UPLOAD (MP3 + OPTIONAL THUMBNAIL) */}
+        {/* TAB 6: DIRECT UPLOAD (MP3 + OPTIONAL THUMBNAIL & SPOTIFY) */}
         {activeTab === 'direct_upload' && (
-          <div className="p-6 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl space-y-6">
-            <h3 className="text-lg font-bold text-white font-syne flex items-center gap-2">
-              <Upload className="w-5 h-5 text-[#EEDC9A]" />
-              Upload Direto de Mídias & Músicas (Admin)
-            </h3>
+          <div id="direct-upload-form-card" className="p-6 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-white font-syne flex items-center gap-2">
+                  <Upload className="w-5 h-5 text-[#EEDC9A]" />
+                  {editingMedia ? (
+                    <span className="flex items-center gap-2 text-amber-400">
+                      Editar Mídia / Música
+                      <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40 uppercase font-sans font-bold">
+                        Modo Edição
+                      </span>
+                    </span>
+                  ) : (
+                    'Upload Direto de Mídias & Músicas (Admin)'
+                  )}
+                </h3>
+                <p className="text-xs text-neutral-400 mt-0.5">
+                  {editingMedia
+                    ? `Alterando os dados de "${editingMedia.title}". Salve para atualizar no Supabase.`
+                    : 'Publique ou atualize músicas (com áudio MP3 ou link do Spotify) e fotos da galeria.'}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 self-start sm:self-center">
+                {editingMedia && (
+                  <button
+                    type="button"
+                    onClick={handleCancelEditMedia}
+                    className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-neutral-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    Cancelar Edição
+                  </button>
+                )}
+                <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-emerald-400 font-bold">
+                  {mediasList.length} Mídias no Supabase
+                </span>
+              </div>
+            </div>
 
             <form onSubmit={handleDirectSubmit} className="space-y-4">
               <div className="flex gap-3 mb-2">
                 <button
                   type="button"
                   onClick={() => setDirectType('music')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                    directType === 'music'
-                      ? 'bg-amber-400 text-black shadow-md'
-                      : 'bg-white/5 text-neutral-400 hover:text-white'
-                  }`}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${directType === 'music'
+                    ? 'bg-amber-400 text-black shadow-md'
+                    : 'bg-white/5 text-neutral-400 hover:text-white'
+                    }`}
                 >
                   Música / Áudio MP3
                 </button>
                 <button
                   type="button"
                   onClick={() => setDirectType('media')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                    directType === 'media'
-                      ? 'bg-amber-400 text-black shadow-md'
-                      : 'bg-white/5 text-neutral-400 hover:text-white'
-                  }`}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${directType === 'media'
+                    ? 'bg-amber-400 text-black shadow-md'
+                    : 'bg-white/5 text-neutral-400 hover:text-white'
+                    }`}
                 >
                   Foto / Galeria
                 </button>
@@ -1288,12 +2268,46 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 />
               </div>
 
+              {/* Spotify Link Field (for Music) */}
+              {directType === 'music' && (
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-[#1DB954]/10 to-transparent border border-[#1DB954]/30 space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                    <label className="text-xs font-bold text-white flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#1DB954] shadow-sm shadow-[#1DB954]/50 animate-pulse" />
+                      Link da Música no Spotify
+                    </label>
+                    {directSpotifyUrl.trim() ? (
+                      <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                        ✓ Link informado — Arquivo MP3 opcional
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-neutral-400 bg-white/5 px-2.5 py-0.5 rounded-full border border-white/10">
+                        Opcional caso anexe arquivo MP3
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    type="url"
+                    placeholder="Ex: https://open.spotify.com/track/... ou link de faixa/álbum"
+                    value={directSpotifyUrl}
+                    onChange={(e) => setDirectSpotifyUrl(e.target.value)}
+                    onBlur={handleSpotifyUrlBlur}
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-[#1DB954]/30 focus:border-[#1DB954] text-xs text-white placeholder:text-neutral-500 outline-none transition-all"
+                  />
+                  <p className="text-[11px] text-neutral-400">
+                    {directSpotifyUrl.trim()
+                      ? 'Ao salvar, os botões e players do site abrirão diretamente esta faixa no Spotify.'
+                      : 'Cole aqui o link direto do Spotify. Se preenchido, você não precisa fazer upload do arquivo MP3.'}
+                  </p>
+                </div>
+              )}
+
               {/* Uploads according to type */}
               {directType === 'music' ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-semibold text-neutral-300 block mb-1">
-                      1. Arquivo de Áudio MP3 (Obrigatório)
+                      1. Arquivo de Áudio MP3 {directSpotifyUrl.trim() ? '(Opcional — Link Spotify informado)' : '(Obrigatório sem link Spotify)'}
                     </label>
                     <FileUpload
                       accept="audio/*,.mp3,.wav"
@@ -1332,12 +2346,138 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 <button
                   type="submit"
                   disabled={directLoading}
-                  className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 text-black font-bold text-xs shadow-lg cursor-pointer"
+                  className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-black font-bold text-xs shadow-lg transition-all cursor-pointer disabled:opacity-50"
                 >
-                  {directLoading ? 'Publicando...' : 'Publicar Diretamente no Site'}
+                  {directLoading
+                    ? 'Salvando...'
+                    : (editingMedia ? 'Salvar Alterações na Música' : 'Publicar Diretamente no Site')}
                 </button>
               </div>
             </form>
+
+            {/* LIST OF REGISTERED MEDIAS & MUSICS IN SUPABASE */}
+            <div className="pt-6 border-t border-white/10 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Music className="w-4 h-4 text-emerald-400" />
+                    Mídias e Músicas Cadastradas ({mediasList.length})
+                  </h4>
+                  <p className="text-xs text-neutral-400">
+                    Itens sincronizados com a tabela <code className="text-emerald-300 bg-white/5 px-1.5 py-0.5 rounded text-[11px]">medias</code> do Supabase
+                  </p>
+                </div>
+              </div>
+
+              {mediasList.length === 0 ? (
+                <div className="p-8 text-center rounded-2xl bg-white/[0.02] border border-white/5 text-neutral-400 text-xs">
+                  Nenhuma mídia cadastrada ainda no banco. Use o formulário acima para publicar a primeira!
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1">
+                  {mediasList.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-3.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 transition-all flex items-start gap-3.5 group"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-neutral-900 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center relative">
+                        {item.thumbnail_url ? (
+                          <img
+                            src={item.thumbnail_url}
+                            alt={item.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Music className="w-5 h-5 text-neutral-500" />
+                        )}
+                        {item.type === 'music' && item.url && (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleAudio(item.id, item.url)}
+                            className="absolute inset-0 bg-black/60 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                          >
+                            {playingAudioId === item.id ? (
+                              <Pause className="w-4 h-4 text-amber-400" />
+                            ) : (
+                              <Play className="w-4 h-4 text-emerald-400" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                            item.type === 'music'
+                              ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30'
+                              : 'bg-teal-400/20 text-teal-300 border border-teal-400/30'
+                          }`}>
+                            {item.type === 'music' ? 'Música' : 'Galeria'}
+                          </span>
+                          <span className="text-[10px] text-neutral-400 truncate">
+                            {item.category || 'Geral'}
+                          </span>
+                        </div>
+
+                        <h5 className="text-xs font-bold text-white truncate">{item.title}</h5>
+                        <p className="text-[11px] text-neutral-400 truncate">{item.author || 'Elite Nagô'}</p>
+
+                        {/* Badges / Links */}
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          {item.spotify_url && (
+                            <a
+                              href={item.spotify_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[11px] font-bold text-[#1DB954] hover:text-[#1ed760] flex items-center gap-1 bg-[#1DB954]/10 hover:bg-[#1DB954]/20 px-2 py-0.5 rounded-lg border border-[#1DB954]/30 transition-all"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Spotify
+                            </a>
+                          )}
+                          {item.url && item.type === 'music' && (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleAudio(item.id, item.url)}
+                              className="text-[11px] font-semibold text-neutral-300 hover:text-white flex items-center gap-1 bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded-lg border border-white/10 transition-all cursor-pointer"
+                            >
+                              {playingAudioId === item.id ? (
+                                <>
+                                  <Pause className="w-3 h-3 text-amber-400" /> Pausar
+                                </>
+                              ) : (
+                                <>
+                                  <Play className="w-3 h-3 text-emerald-400" /> Ouvir MP3
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleStartEditMedia(item)}
+                          title="Editar esta mídia"
+                          className="p-2 rounded-xl text-neutral-400 hover:text-amber-400 hover:bg-amber-500/10 transition-all cursor-pointer opacity-80 group-hover:opacity-100"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMedia(item.id, item.title)}
+                          title="Deletar mídia do banco"
+                          className="p-2 rounded-xl text-neutral-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer opacity-80 group-hover:opacity-100"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1515,17 +2655,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 <button
                   type="submit"
                   disabled={newsLoading}
-                  className={`px-6 py-2.5 rounded-2xl font-bold text-xs shadow-lg cursor-pointer hover:scale-105 active:scale-95 transition-all ${
-                    editingNews
-                      ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-black shadow-amber-500/20'
-                      : 'bg-gradient-to-r from-[#EEDC9A] to-[#d4be6e] text-black shadow-[#EEDC9A]/20'
-                  }`}
+                  className={`px-6 py-2.5 rounded-2xl font-bold text-xs shadow-lg cursor-pointer hover:scale-105 active:scale-95 transition-all ${editingNews
+                    ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-black shadow-amber-500/20'
+                    : 'bg-gradient-to-r from-[#EEDC9A] to-[#d4be6e] text-black shadow-[#EEDC9A]/20'
+                    }`}
                 >
                   {newsLoading
                     ? 'Salvando...'
                     : editingNews
-                    ? 'Salvar Alterações no Supabase'
-                    : 'Publicar Notícia no Supabase'}
+                      ? 'Salvar Alterações no Supabase'
+                      : 'Publicar Notícia no Supabase'}
                 </button>
               </div>
             </form>
@@ -1539,11 +2678,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   return (
                     <div
                       key={item.id}
-                      className={`p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                        isBeingEdited
-                          ? 'bg-amber-500/10 border-amber-400/50 shadow-lg shadow-amber-500/10'
-                          : 'bg-white/5 border border-white/10 hover:border-white/20'
-                      }`}
+                      className={`p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${isBeingEdited
+                        ? 'bg-amber-500/10 border-amber-400/50 shadow-lg shadow-amber-500/10'
+                        : 'bg-white/5 border border-white/10 hover:border-white/20'
+                        }`}
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -1568,11 +2706,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                         <button
                           type="button"
                           onClick={(e) => handleStartEdit(item, e)}
-                          className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
-                            isBeingEdited
-                              ? 'bg-amber-400 text-black border-amber-400'
-                              : 'bg-amber-500/10 hover:bg-amber-500/20 text-[#EEDC9A] hover:text-white border-[#EEDC9A]/30'
-                          }`}
+                          className={`p-1.5 rounded-lg border transition-all cursor-pointer ${isBeingEdited
+                            ? 'bg-amber-400 text-black border-amber-400'
+                            : 'bg-amber-500/10 hover:bg-amber-500/20 text-[#EEDC9A] hover:text-white border-[#EEDC9A]/30'
+                            }`}
                           title="Alterar notícia"
                         >
                           <Pencil className="w-3.5 h-3.5" />
@@ -1615,7 +2752,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setSelectedRequest(null)}
-                  className="px-4 py-2 rounded-xl bg-white/10 text-xs font-bold"
+                  className="px-4 py-2 rounded-xl bg-white/10 text-xs font-bold cursor-pointer hover:bg-white/20 transition-all"
                 >
                   Fechar
                 </button>
@@ -1624,8 +2761,65 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Delete Academy Confirmation Modal */}
+      <AnimatePresence>
+        {academyToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+            onClick={() => setAcademyToDelete(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md p-6 rounded-3xl bg-[#111118] border border-rose-500/30 text-white space-y-4 shadow-2xl"
+            >
+              <div className="flex items-center gap-3 text-rose-400">
+                <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold font-syne text-white">Confirmar Exclusão de Polo</h4>
+                  <p className="text-xs text-neutral-400">Esta ação removerá a unidade do site e do Supabase.</p>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-1.5 text-xs">
+                <p className="text-[#EEDC9A] font-bold">{academyToDelete.city} • {academyToDelete.neighborhood}</p>
+                <p className="font-bold text-white text-sm">{academyToDelete.address}</p>
+                <p className="text-neutral-400">Responsável: {academyToDelete.responsible}</p>
+                <p className="text-neutral-400">{academyToDelete.days} ({academyToDelete.hours})</p>
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setAcademyToDelete(null)}
+                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDeleteAcademy}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white text-xs font-bold shadow-lg shadow-rose-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Excluir Definitivamente
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
 export default AdminDashboard;
+

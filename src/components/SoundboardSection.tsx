@@ -8,6 +8,7 @@ import { ElasticSlider } from './ElasticSlider';
 import { SpotifyPlayerModal } from './SpotifyPlayerModal';
 import { Skeleton } from './ui/skeleton';
 import { useNetworkStatus } from '@/lib/useNetworkStatus';
+import { supabase } from '@/lib/supabase';
 
 import { playTrack, stopCurrentTrack, setGlobalVolume, seekCurrentTrack } from '@/lib/audioEngine';
 
@@ -16,8 +17,7 @@ interface SoundboardSectionProps {
 }
 
 export const SoundboardSection: React.FC<SoundboardSectionProps> = ({ onOpenPlaylistPage }) => {
-  // Top 4 initial featured rhythms
-  const featuredRhythms = ALL_RHYTHMS.slice(0, 4);
+  const [tracks, setTracks] = useState<RhythmTrack[]>(ALL_RHYTHMS);
   const { isOnline } = useNetworkStatus();
 
   const [activeTrack, setActiveTrack] = useState<RhythmTrack | null>(null);
@@ -26,6 +26,59 @@ export const SoundboardSection: React.FC<SoundboardSectionProps> = ({ onOpenPlay
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [playbackTime, setPlaybackTime] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchMusic = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('medias')
+          .select('*')
+          .eq('type', 'music')
+          .order('created_at', { ascending: false });
+
+        if (data && data.length > 0 && !error) {
+          const supabaseTracks: RhythmTrack[] = data.map((m: any) => ({
+            id: m.id,
+            name: m.title,
+            instrument: m.category || 'Toques & Cantigas',
+            tempo: 'Moderado',
+            category: m.category || 'Toques de Berimbau',
+            artist: m.author || 'Elite Nagô',
+            description: m.description || 'Toque tradicional de capoeira com mandinga e ritmo.',
+            type: 'music',
+            audioSrc: m.url && !m.url.startsWith('blob:') && (m.url.startsWith('http') || m.url.startsWith('/')) ? m.url : undefined,
+            spotifyUrl: m.spotify_url || (m.url?.includes('spotify.com') ? m.url : undefined),
+            cover: m.thumbnail_url && !m.thumbnail_url.startsWith('blob:') && m.thumbnail_url !== 'https://i.imgur.com/A46hzMt.jpeg' ? m.thumbnail_url : '/logos/en_thumb.png',
+            freq: 220,
+            pattern: [1, 0, 1, 1, 0, 1, 0, 0],
+          }));
+
+          setTracks(supabaseTracks);
+        } else if (!data || data.length === 0) {
+          setTracks(ALL_RHYTHMS);
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar músicas do Supabase:', err);
+      }
+    };
+
+    fetchMusic();
+
+    const channel = supabase
+      .channel('soundboard-medias-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'medias' }, () => {
+        fetchMusic();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Top 4 initial featured rhythms
+  const featuredRhythms = tracks.slice(0, 4);
+
 
   useEffect(() => {
     setGlobalVolume(volume);
@@ -101,10 +154,10 @@ export const SoundboardSection: React.FC<SoundboardSectionProps> = ({ onOpenPlay
   };
 
   const handleTrackRowClick = (track: RhythmTrack) => {
-    if (activeTrack?.id === track.id && isPlaying) {
-      setIsModalOpen(true);
-    } else {
+    setActiveTrack(track);
+    if (track.audioSrc) {
       togglePlayTrack(track);
+    } else {
       setIsModalOpen(true);
     }
   };
@@ -241,7 +294,7 @@ export const SoundboardSection: React.FC<SoundboardSectionProps> = ({ onOpenPlay
                 {/* Spotify Direct Link Button */}
                 <div className="hidden md:flex col-span-1 items-center justify-center">
                   <a
-                    href={`https://open.spotify.com/search/${encodeURIComponent('capoeira elite nago ' + track.name)}`}
+                    href={track.spotifyUrl || `https://open.spotify.com/search/${encodeURIComponent('capoeira elite nago ' + track.name)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
@@ -271,7 +324,12 @@ export const SoundboardSection: React.FC<SoundboardSectionProps> = ({ onOpenPlay
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      togglePlayTrack(track);
+                      if (track.audioSrc) {
+                        togglePlayTrack(track);
+                      } else {
+                        setActiveTrack(track);
+                        setIsModalOpen(true);
+                      }
                     }}
                     className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${isCurrent
                       ? 'bg-white text-black shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-105'
