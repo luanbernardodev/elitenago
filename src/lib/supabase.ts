@@ -86,11 +86,23 @@ export interface DatabaseAcademy {
   created_at?: string;
 }
 
+export interface DatabaseSponsor {
+  id: string;
+  name: string;
+  alt: string;
+  logo_url: string;
+  website_url?: string | null;
+  display_order?: number;
+  is_active?: boolean;
+  created_at?: string;
+}
+
+
 export async function uploadToStorage(file: File, folder = 'uploads'): Promise<string | null> {
   try {
     const ext = file.name.split('.').pop() || 'bin';
     const cleanFileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('medias')
       .upload(cleanFileName, file, {
         cacheControl: '3600',
@@ -101,6 +113,10 @@ export async function uploadToStorage(file: File, folder = 'uploads'): Promise<s
       console.warn('Storage upload warning:', error.message);
       return null;
     }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('medias')
+      .getPublicUrl(cleanFileName);
 
     return publicUrlData.publicUrl;
   } catch (err) {

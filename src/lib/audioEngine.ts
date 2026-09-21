@@ -11,6 +11,10 @@ let synthInterval: any = null;
 let currentPlayingTrack: RhythmTrack | null = null;
 let globalVolume: number = 70;
 
+export function getGlobalVolume(): number {
+  return globalVolume;
+}
+
 export function getSharedAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
 
@@ -173,6 +177,11 @@ export function playTrack(
       if (onTimeUpdate && audio) {
         onTimeUpdate(Math.floor(audio.currentTime));
       }
+    });
+
+    audio.addEventListener('ended', () => {
+      if (onEnded) onEnded();
+      stopCurrentTrack();
     });
 
     audio.addEventListener('error', (err) => {

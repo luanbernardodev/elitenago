@@ -33,10 +33,15 @@ import {
   Building2,
   Navigation,
   UserCheck,
-  AlertTriangle
+  AlertTriangle,
+  HeartHandshake,
+  Globe,
+  Tag,
+  Image as ImageIcon
 } from 'lucide-react';
 import { FileUpload } from '../ui/file-upload';
-import { supabase, uploadToStorage, fetchSpotifyMetadata } from '../../lib/supabase';
+import { CalendarDatePicker } from '../ui/calendar-date-picker';
+import { supabase, uploadToStorage, fetchSpotifyMetadata, DatabaseSponsor } from '../../lib/supabase';
 
 interface AdminDashboardProps {
   onBackToHome?: () => void;
@@ -292,6 +297,45 @@ const INITIAL_ACADEMIES: AdminAcademy[] = [
   },
 ];
 
+const INITIAL_SPONSORS: DatabaseSponsor[] = [
+  {
+    id: 'spon-1',
+    name: 'Ascomcer',
+    alt: 'Logo Ascomcer',
+    logo_url: '/logos/ascomcer.png',
+    website_url: 'https://www.ascomcer.org.br/',
+    display_order: 1,
+    is_active: true,
+  },
+  {
+    id: 'spon-2',
+    name: 'MRS Logística',
+    alt: 'Logo MRS Logística',
+    logo_url: '/logos/mrs.png',
+    website_url: 'https://www.mrs.com.br/',
+    display_order: 2,
+    is_active: true,
+  },
+  {
+    id: 'spon-3',
+    name: 'Supermercado JK',
+    alt: 'Logo Supermercado JK',
+    logo_url: '/logos/jk.png',
+    website_url: '',
+    display_order: 3,
+    is_active: true,
+  },
+  {
+    id: 'spon-4',
+    name: 'Grupo Bahamas',
+    alt: 'Logo Grupo Bahamas',
+    logo_url: '/logos/grupo_bahamas.png',
+    website_url: 'https://www.bahamas.com.br/',
+    display_order: 4,
+    is_active: true,
+  },
+];
+
 const TIMELINE_ORDERS = [
   { id: '1', title: 'R$ 2.400 em novas doações recebidas', time: '22 DEC 7:20 PM', color: 'bg-emerald-500', icon: DollarSign },
   { id: '2', title: 'Novo pedido de matrícula infantil #1832412', time: '21 DEC 11:00 PM', color: 'bg-rose-500', icon: MessageSquare },
@@ -302,13 +346,14 @@ const TIMELINE_ORDERS = [
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) => {
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'academies' | 'requests' | 'donations' | 'approvals' | 'direct_upload' | 'news'
+    'overview' | 'academies' | 'requests' | 'donations' | 'approvals' | 'direct_upload' | 'news' | 'sponsors'
   >('overview');
 
   const [approvals, setApprovals] = useState<StudentApproval[]>(INITIAL_APPROVALS);
   const [newsList, setNewsList] = useState<NewsItem[]>(INITIAL_NEWS);
   const [requests, setRequests] = useState<ContactRequest[]>(INITIAL_REQUESTS);
   const [academiesList, setAcademiesList] = useState<AdminAcademy[]>(INITIAL_ACADEMIES);
+  const [sponsorsList, setSponsorsList] = useState<DatabaseSponsor[]>(INITIAL_SPONSORS);
   const [searchTerm, setSearchTerm] = useState('');
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null);
@@ -357,6 +402,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
   const [academyMax, setAcademyMax] = useState<number>(100);
   const [academyLoading, setAcademyLoading] = useState(false);
   const [academyToDelete, setAcademyToDelete] = useState<AdminAcademy | null>(null);
+
+  // Sponsors Form & Delete Modal State
+  const [editingSponsor, setEditingSponsor] = useState<DatabaseSponsor | null>(null);
+  const [sponsorName, setSponsorName] = useState('');
+  const [sponsorAlt, setSponsorAlt] = useState('');
+  const [sponsorWebsiteUrl, setSponsorWebsiteUrl] = useState('');
+  const [sponsorOrder, setSponsorOrder] = useState<number>(1);
+  const [sponsorLogoFiles, setSponsorLogoFiles] = useState<File[]>([]);
+  const [sponsorLoading, setSponsorLoading] = useState(false);
+  const [sponsorToDelete, setSponsorToDelete] = useState<DatabaseSponsor | null>(null);
 
   // Real-time synchronization with Supabase
   useEffect(() => {
@@ -442,6 +497,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
             }))
           );
         }
+
         const { data: mediasData } = await supabase
           .from('medias')
           .select('*')
@@ -449,6 +505,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
 
         if (mediasData && mediasData.length > 0) {
           setMediasList(mediasData);
+        }
+
+        const { data: sponsorsData } = await supabase
+          .from('sponsors')
+          .select('*')
+          .order('display_order', { ascending: true });
+
+        if (sponsorsData && sponsorsData.length > 0) {
+          setSponsorsList(sponsorsData);
         }
       } catch (err) {
         console.warn('Supabase not yet populated or offline, using fallback state:', err);
@@ -472,6 +537,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
         fetchSupabaseData();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'medias' }, () => {
+        fetchSupabaseData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sponsors' }, () => {
         fetchSupabaseData();
       })
       .subscribe();
@@ -1111,6 +1179,177 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
     }
   };
 
+  // Sponsor Form Handlers
+  const handleStartEditSponsor = (item: DatabaseSponsor, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setActiveTab('sponsors');
+    setEditingSponsor(item);
+    setSponsorName(item.name || '');
+    setSponsorAlt(item.alt || '');
+    setSponsorWebsiteUrl(item.website_url || '');
+    setSponsorOrder(item.display_order ?? 1);
+    setSponsorLogoFiles([]);
+
+    setTimeout(() => {
+      const formElement = document.getElementById('sponsor-form-card');
+      if (formElement) {
+        formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+
+    showToast(`Editando apoiador: "${item.name}"`);
+  };
+
+  const handleCancelEditSponsor = () => {
+    setEditingSponsor(null);
+    setSponsorName('');
+    setSponsorAlt('');
+    setSponsorWebsiteUrl('');
+    setSponsorOrder(sponsorsList.length + 1);
+    setSponsorLogoFiles([]);
+  };
+
+  const handleSponsorSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sponsorName.trim()) {
+      showToast('Informe o nome da empresa ou apoiador.');
+      return;
+    }
+    if (!sponsorAlt.trim()) {
+      showToast('Informe a identificação / texto alt da logo.');
+      return;
+    }
+    if (!editingSponsor && sponsorLogoFiles.length === 0) {
+      showToast('Faça o upload do arquivo de logo em PNG.');
+      return;
+    }
+
+    setSponsorLoading(true);
+
+    let finalLogoUrl = editingSponsor ? editingSponsor.logo_url : '/logos/ascomcer.png';
+
+    if (sponsorLogoFiles.length > 0) {
+      try {
+        const uploadedUrl = await uploadToStorage(sponsorLogoFiles[0], 'sponsors');
+        if (uploadedUrl) {
+          finalLogoUrl = uploadedUrl;
+        } else {
+          finalLogoUrl = URL.createObjectURL(sponsorLogoFiles[0]);
+        }
+      } catch (uploadErr) {
+        console.warn('Erro ao fazer upload da logo para o storage:', uploadErr);
+        finalLogoUrl = URL.createObjectURL(sponsorLogoFiles[0]);
+      }
+    }
+
+    if (editingSponsor) {
+      const updatedItem: DatabaseSponsor = {
+        ...editingSponsor,
+        name: sponsorName.trim(),
+        alt: sponsorAlt.trim(),
+        logo_url: finalLogoUrl,
+        website_url: sponsorWebsiteUrl.trim() || null,
+        display_order: Number(sponsorOrder) || 1,
+      };
+
+      try {
+        const { error } = await supabase
+          .from('sponsors')
+          .update({
+            name: updatedItem.name,
+            alt: updatedItem.alt,
+            logo_url: updatedItem.logo_url,
+            website_url: updatedItem.website_url,
+            display_order: updatedItem.display_order,
+          })
+          .eq('id', editingSponsor.id);
+
+        if (error) {
+          console.error('Erro ao atualizar apoiador no Supabase:', error);
+          showToast(`Aviso: Atualizado localmente (${error.message})`);
+        } else {
+          showToast('Apoiador atualizado e sincronizado no Supabase!');
+        }
+      } catch (err: any) {
+        console.warn('Falha na comunicação:', err);
+        showToast('Apoiador atualizado localmente.');
+      }
+
+      setSponsorsList(prev => prev.map(s => (s.id === editingSponsor.id ? updatedItem : s)));
+      handleCancelEditSponsor();
+    } else {
+      const newItem: DatabaseSponsor = {
+        id: `spon-${Date.now()}`,
+        name: sponsorName.trim(),
+        alt: sponsorAlt.trim(),
+        logo_url: finalLogoUrl,
+        website_url: sponsorWebsiteUrl.trim() || null,
+        display_order: Number(sponsorOrder) || (sponsorsList.length + 1),
+        is_active: true,
+      };
+
+      try {
+        const { data: insertedData, error } = await supabase
+          .from('sponsors')
+          .insert([
+            {
+              name: newItem.name,
+              alt: newItem.alt,
+              logo_url: newItem.logo_url,
+              website_url: newItem.website_url,
+              display_order: newItem.display_order,
+              is_active: true,
+            },
+          ])
+          .select();
+
+        if (error) {
+          console.error('Erro ao cadastrar apoiador no Supabase:', error);
+          showToast(`Aviso: Apoiador inserido localmente (${error.message})`);
+          setSponsorsList(prev => [...prev, newItem]);
+        } else {
+          if (insertedData && insertedData.length > 0) {
+            newItem.id = insertedData[0].id;
+          }
+          setSponsorsList(prev => [...prev.filter(s => s.id !== newItem.id), newItem]);
+          showToast('Apoiador cadastrado e sincronizado com sucesso!');
+        }
+      } catch (err: any) {
+        console.warn('Falha na comunicação:', err);
+        setSponsorsList(prev => [...prev, newItem]);
+        showToast('Apoiador inserido localmente.');
+      }
+
+      handleCancelEditSponsor();
+    }
+
+    setSponsorLoading(false);
+  };
+
+  const handleConfirmDeleteSponsor = async () => {
+    if (!sponsorToDelete) return;
+    const toDeleteId = sponsorToDelete.id;
+    const toDeleteName = sponsorToDelete.name;
+
+    if (editingSponsor?.id === toDeleteId) {
+      handleCancelEditSponsor();
+    }
+
+    setSponsorsList(prev => prev.filter(s => s.id !== toDeleteId));
+    setSponsorToDelete(null);
+
+    try {
+      const { error } = await supabase.from('sponsors').delete().eq('id', toDeleteId);
+      if (error) {
+        console.warn('Erro ao deletar apoiador do Supabase:', error);
+      } else {
+        showToast(`Apoiador "${toDeleteName}" removido com sucesso.`);
+      }
+    } catch {
+      // Handled
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#06060a] text-neutral-100 flex selection:bg-[#EEDC9A] selection:text-black font-sans antialiased">
       {/* Toast Alert */}
@@ -1180,6 +1419,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
               { id: 'approvals', label: 'Aprovações Alunos', icon: Award, color: 'from-amber-400 to-yellow-500' },
               { id: 'direct_upload', label: 'Upload Direto', icon: Upload, color: 'from-emerald-400 to-teal-500' },
               { id: 'news', label: 'Inserir Notícias', icon: Newspaper, color: 'from-[#EEDC9A] to-amber-600' },
+              { id: 'sponsors', label: 'Apoiadores', icon: HeartHandshake, color: 'from-pink-500 to-rose-500' },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -2730,6 +2970,324 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
             </div>
           </div>
         )}
+
+        {/* TAB: SPONSORS (APOIADORES & PARCEIROS) */}
+        {activeTab === 'sponsors' && (
+          <div className="space-y-6">
+            {/* Header Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-[#0e0e14]/90 via-[#16121c]/90 to-[#0e0e14]/90 border border-white/10 shadow-xl">
+              <div className="flex items-center gap-4">
+                <div className="p-3.5 rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-500 text-white shadow-lg shadow-pink-500/20">
+                  <HeartHandshake className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xl font-black text-white font-syne">Apoiadores & Patrocinadores</h3>
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-pink-500/10 text-pink-400 border border-pink-500/20 uppercase tracking-wider">
+                      Carrossel Oficial
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Cadastre, edite e gerencie as marcas parceiras exibidas no carrossel do site com logos em PNG transparente.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-center">
+                  <span className="block text-base font-black text-white font-syne">{sponsorsList.length}</span>
+                  <span className="text-[10px] text-neutral-400 uppercase font-semibold">Parceiros</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Form Card */}
+            <div id="sponsor-form-card" className="p-6 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-xl text-black shadow-md ${editingSponsor ? 'bg-gradient-to-tr from-amber-400 to-yellow-500' : 'bg-gradient-to-tr from-pink-500 to-rose-500'}`}>
+                    {editingSponsor ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white font-syne">
+                      {editingSponsor ? `Editar Apoiador: ${editingSponsor.name}` : 'Inserir Novo Apoiador'}
+                    </h4>
+                    <p className="text-[11px] text-neutral-400">
+                      {editingSponsor ? 'Atualize as informações e a imagem da logo do parceiro selecionado.' : 'Preencha os campos abaixo e faça o upload da logo em PNG na proporção do carrossel.'}
+                    </p>
+                  </div>
+                </div>
+                {editingSponsor && (
+                  <button
+                    type="button"
+                    onClick={handleCancelEditSponsor}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-neutral-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Cancelar Edição</span>
+                  </button>
+                )}
+              </div>
+
+              <form onSubmit={handleSponsorSubmit} className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Nome da Empresa */}
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider mb-1.5">
+                      Nome da Empresa / Apoiador <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={sponsorName}
+                      onChange={(e) => setSponsorName(e.target.value)}
+                      placeholder="Ex: Grupo Bahamas, Supermercado JK, MRS Logística..."
+                      className="w-full px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-pink-500/50 transition-all"
+                    />
+                  </div>
+
+                  {/* Identificação / alt= */}
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider mb-1.5">
+                      Identificação da Logo (alt=) <span className="text-rose-400">*</span>
+                      <span className="text-[10px] font-normal text-pink-400 ml-2">(Para sabermos qual logo é)</span>
+                    </label>
+                    <div className="relative">
+                      <Tag className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        required
+                        value={sponsorAlt}
+                        onChange={(e) => setSponsorAlt(e.target.value)}
+                        placeholder="Ex: Logo Supermercado JK, Logo Ascomcer..."
+                        className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-pink-500/50 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Link do Website */}
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider mb-1.5">
+                      Link do Site / Rede Social (Opcional)
+                    </label>
+                    <div className="relative">
+                      <Globe className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="url"
+                        value={sponsorWebsiteUrl}
+                        onChange={(e) => setSponsorWebsiteUrl(e.target.value)}
+                        placeholder="https://empresa.com.br"
+                        className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-pink-500/50 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Ordem de Exibição */}
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider mb-1.5">
+                      Ordem de Exibição no Carrossel
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={sponsorOrder}
+                      onChange={(e) => setSponsorOrder(Number(e.target.value) || 1)}
+                      className="w-full px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-pink-500/50 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Upload de Logo PNG */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider">
+                      Upload de Logo em PNG {editingSponsor && '(Deixe vazio para manter a atual)'} <span className="text-rose-400">*</span>
+                    </label>
+                    <span className="text-[11px] font-medium text-pink-400 bg-pink-500/10 px-2.5 py-0.5 rounded-full border border-pink-500/20">
+                      Proporção do carrossel (altura ~58px com fundo transparente)
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+                    <div className="lg:col-span-2">
+                      <FileUpload
+                        onChange={(files) => setSponsorLogoFiles(files)}
+                        accept="image/png,image/*"
+                        maxFiles={1}
+                      />
+                    </div>
+
+                    {/* Preview matching carousel container */}
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-center space-y-2">
+                      <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                        Prévia no Carrossel
+                      </span>
+                      <div className="w-full h-20 bg-white/95 rounded-xl p-2 shadow-sm flex items-center justify-center overflow-hidden border border-neutral-200">
+                        {sponsorLogoFiles.length > 0 ? (
+                          <img
+                            src={URL.createObjectURL(sponsorLogoFiles[0])}
+                            alt={sponsorAlt || 'Prévia da Logo'}
+                            className="max-h-14 max-w-full object-contain"
+                          />
+                        ) : editingSponsor?.logo_url ? (
+                          <img
+                            src={editingSponsor.logo_url}
+                            alt={sponsorAlt || editingSponsor.alt}
+                            className="max-h-14 max-w-full object-contain"
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center text-neutral-400 text-xs gap-1">
+                            <ImageIcon className="w-5 h-5 text-neutral-300" />
+                            <span className="text-[11px] text-neutral-500">Nenhuma logo carregada</span>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-neutral-400 font-mono truncate max-w-full">
+                        {sponsorAlt ? `alt="${sponsorAlt}"` : 'Preencha o campo alt='}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  {editingSponsor && (
+                    <button
+                      type="button"
+                      onClick={handleCancelEditSponsor}
+                      className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-neutral-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={sponsorLoading}
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white text-xs font-bold shadow-lg shadow-pink-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {sponsorLoading ? (
+                      <span>Salvando no Supabase...</span>
+                    ) : editingSponsor ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Salvar Alterações</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4" />
+                        <span>Cadastrar Apoiador</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* List of Registered Sponsors Cards */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-white font-syne uppercase tracking-wider flex items-center gap-2">
+                  <span>Apoiadores Cadastrados</span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-pink-500/10 text-pink-400 border border-pink-500/20 font-bold">
+                    {sponsorsList.length} marcas
+                  </span>
+                </h4>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {sponsorsList.map((sponsor, idx) => {
+                  const isBeingEdited = editingSponsor?.id === sponsor.id;
+                  return (
+                    <div
+                      key={sponsor.id}
+                      className={`p-4 rounded-3xl bg-[#0e0e14]/90 border transition-all flex flex-col justify-between space-y-3 ${
+                        isBeingEdited
+                          ? 'border-pink-500/60 bg-pink-950/20 shadow-xl shadow-pink-500/10'
+                          : 'border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      <div>
+                        {/* Header Badge */}
+                        <div className="flex items-center justify-between mb-2.5">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-white/10 text-neutral-300">
+                            #{sponsor.display_order ?? idx + 1}
+                          </span>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            Ativo
+                          </span>
+                        </div>
+
+                        {/* Logo Container Matching Carousel Style */}
+                        <div className="w-full h-20 bg-white/95 rounded-2xl p-2.5 shadow-sm flex items-center justify-center overflow-hidden border border-neutral-200/80 mb-3">
+                          <img
+                            src={sponsor.logo_url}
+                            alt={sponsor.alt || sponsor.name}
+                            className="max-h-14 max-w-full object-contain"
+                          />
+                        </div>
+
+                        {/* Sponsor Name */}
+                        <h5 className="text-sm font-bold text-white font-syne truncate mb-1" title={sponsor.name}>
+                          {sponsor.name}
+                        </h5>
+
+                        {/* Alt Field Tag */}
+                        <div className="flex items-start gap-1.5 p-2 rounded-xl bg-white/5 border border-white/10 mb-2">
+                          <Tag className="w-3 h-3 text-pink-400 mt-0.5 flex-shrink-0" />
+                          <p className="text-[10px] text-neutral-300 font-mono line-clamp-2" title={`alt="${sponsor.alt}"`}>
+                            <span className="text-pink-400 font-semibold">alt=</span>"{sponsor.alt || sponsor.name}"
+                          </p>
+                        </div>
+
+                        {/* Website Link */}
+                        {sponsor.website_url ? (
+                          <a
+                            href={sponsor.website_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] text-[#EEDC9A] hover:underline truncate max-w-full"
+                            title={sponsor.website_url}
+                          >
+                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">{sponsor.website_url.replace(/^https?:\/\//, '')}</span>
+                          </a>
+                        ) : (
+                          <span className="text-[11px] text-neutral-500 italic">Sem link de website</span>
+                        )}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+                        <button
+                          type="button"
+                          onClick={(e) => handleStartEditSponsor(sponsor, e)}
+                          className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold ${
+                            isBeingEdited
+                              ? 'bg-pink-500 text-white border-pink-500'
+                              : 'bg-pink-500/10 hover:bg-pink-500/20 text-pink-300 border-pink-500/30'
+                          }`}
+                          title="Editar apoiador"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>Editar</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSponsorToDelete(sponsor)}
+                          className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold"
+                          title="Excluir apoiador"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Excluir</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Request Details Modal */}
@@ -2807,6 +3365,72 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 <button
                   type="button"
                   onClick={handleConfirmDeleteAcademy}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white text-xs font-bold shadow-lg shadow-rose-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Excluir Definitivamente
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Sponsor Confirmation Modal */}
+      <AnimatePresence>
+        {sponsorToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+            onClick={() => setSponsorToDelete(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md p-6 rounded-3xl bg-[#111118] border border-rose-500/30 text-white space-y-4 shadow-2xl"
+            >
+              <div className="flex items-center gap-3 text-rose-400">
+                <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold font-syne text-white">Confirmar Exclusão de Apoiador</h4>
+                  <p className="text-xs text-neutral-400">Esta ação removerá a marca parceira do site e do carrossel.</p>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                <div className="w-full h-16 bg-white/95 rounded-xl p-2 flex items-center justify-center border border-neutral-200">
+                  <img
+                    src={sponsorToDelete.logo_url}
+                    alt={sponsorToDelete.alt || sponsorToDelete.name}
+                    className="max-h-12 max-w-full object-contain"
+                  />
+                </div>
+                <div className="space-y-1 text-xs">
+                  <p className="font-bold text-white text-sm">{sponsorToDelete.name}</p>
+                  <p className="text-neutral-400 font-mono"><span className="text-pink-400 font-bold">alt:</span> "{sponsorToDelete.alt}"</p>
+                  {sponsorToDelete.website_url && (
+                    <p className="text-neutral-400 truncate">{sponsorToDelete.website_url}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setSponsorToDelete(null)}
+                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDeleteSponsor}
                   className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white text-xs font-bold shadow-lg shadow-rose-500/20 transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <Trash2 className="w-3.5 h-3.5" />

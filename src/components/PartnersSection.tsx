@@ -1,30 +1,31 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { LogoLoop, LogoItem } from './LogoLoop';
 import { ScrollFloat } from './ScrollFloat';
+import { supabase, DatabaseSponsor } from '@/lib/supabase';
 
-const PARTNER_LOGOS: LogoItem[] = [
+const FALLBACK_LOGOS: LogoItem[] = [
   {
     src: '/logos/ascomcer.png',
-    alt: 'Ascomcer',
+    alt: 'Logo Ascomcer',
     title: 'Ascomcer',
     href: 'https://www.ascomcer.org.br/',
   },
   {
     src: '/logos/mrs.png',
-    alt: 'MRS Logística',
+    alt: 'Logo MRS Logística',
     title: 'MRS Logística',
     href: 'https://www.mrs.com.br/',
   },
   {
     src: '/logos/jk.png',
-    alt: 'Supermercado JK',
+    alt: 'Logo Supermercado JK',
     title: 'Supermercado JK',
     className: 'bg-white/95 rounded-xl p-1.5 shadow-sm',
     href: '#',
   },
   {
     src: '/logos/grupo_bahamas.png',
-    alt: 'Grupo Bahamas',
+    alt: 'Logo Grupo Bahamas',
     title: 'Grupo Bahamas',
     className: 'bg-white/95 rounded-xl p-1.5 shadow-sm',
     href: 'https://www.bahamas.com.br/',
@@ -32,6 +33,47 @@ const PARTNER_LOGOS: LogoItem[] = [
 ];
 
 export const PartnersSection: React.FC = () => {
+  const [partners, setPartners] = useState<LogoItem[]>(FALLBACK_LOGOS);
+
+  useEffect(() => {
+    const fetchSponsors = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('sponsors')
+          .select('*')
+          .eq('is_active', true)
+          .order('display_order', { ascending: true });
+
+        if (data && data.length > 0 && !error) {
+          setPartners(
+            data.map((s: DatabaseSponsor) => ({
+              src: s.logo_url,
+              alt: s.alt || s.name,
+              title: s.name,
+              href: s.website_url || '#',
+              className: 'bg-white/95 rounded-xl p-1.5 shadow-sm',
+            }))
+          );
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar apoiadores do Supabase:', err);
+      }
+    };
+
+    fetchSponsors();
+
+    const channel = supabase
+      .channel('partners-section-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sponsors' }, () => {
+        fetchSponsors();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   return (
     <section
       id="apoiadores"
@@ -50,7 +92,7 @@ export const PartnersSection: React.FC = () => {
       {/* Seamless Logo Loop with generous spacing and fluid speed */}
       <div className="w-full">
         <LogoLoop
-          logos={PARTNER_LOGOS}
+          logos={partners}
           speed={18}
           direction="left"
           logoHeight={58}
