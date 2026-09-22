@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -39,11 +39,17 @@ import {
   Tag,
   Video,
   Download,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Smartphone,
+  Laptop,
+  Tablet,
+  Activity,
+  RefreshCw,
+  Compass
 } from 'lucide-react';
 import { FileUpload } from '../ui/file-upload';
 import { CalendarDatePicker } from '../ui/calendar-date-picker';
-import { supabase, uploadToStorage, formatFileSize, triggerFileDownload, fetchSpotifyMetadata, DatabaseSponsor } from '../../lib/supabase';
+import { supabase, uploadToStorage, formatFileSize, triggerFileDownload, fetchSpotifyMetadata, DatabaseSponsor, DatabaseSiteVisit } from '../../lib/supabase';
 
 interface AdminDashboardProps {
   onBackToHome?: () => void;
@@ -349,10 +355,116 @@ const TIMELINE_ORDERS = [
   { id: '5', title: 'Sincronização Realtime Supabase concluída', time: '18 DEC 4:54 AM', color: 'bg-cyan-500', icon: ShieldCheck },
 ];
 
+const INITIAL_VISITS: DatabaseSiteVisit[] = [
+  {
+    id: 'vis-1',
+    visited_at: new Date(Date.now() - 1000 * 60 * 3).toISOString(),
+    city: 'Juiz de Fora',
+    region: 'Minas Gerais',
+    region_code: 'MG',
+    country: 'Brasil',
+    country_code: 'BR',
+    device_type: 'mobile',
+    browser: 'Google Chrome',
+    os: 'Android',
+    referrer: 'Acesso Direto',
+    page_path: '/',
+  },
+  {
+    id: 'vis-2',
+    visited_at: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
+    city: 'Laranjal',
+    region: 'Minas Gerais',
+    region_code: 'MG',
+    country: 'Brasil',
+    country_code: 'BR',
+    device_type: 'desktop',
+    browser: 'Google Chrome',
+    os: 'Windows',
+    referrer: 'instagram.com',
+    page_path: '/#academias',
+  },
+  {
+    id: 'vis-3',
+    visited_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
+    city: 'Santos Dumont',
+    region: 'Minas Gerais',
+    region_code: 'MG',
+    country: 'Brasil',
+    country_code: 'BR',
+    device_type: 'mobile',
+    browser: 'Apple Safari',
+    os: 'iOS',
+    referrer: 'Acesso Direto',
+    page_path: '/?view=midias',
+  },
+  {
+    id: 'vis-4',
+    visited_at: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
+    city: 'Rio de Janeiro',
+    region: 'Rio de Janeiro',
+    region_code: 'RJ',
+    country: 'Brasil',
+    country_code: 'BR',
+    device_type: 'desktop',
+    browser: 'Microsoft Edge',
+    os: 'Windows',
+    referrer: 'google.com',
+    page_path: '/',
+  },
+  {
+    id: 'vis-5',
+    visited_at: new Date(Date.now() - 1000 * 60 * 140).toISOString(),
+    city: 'São Paulo',
+    region: 'São Paulo',
+    region_code: 'SP',
+    country: 'Brasil',
+    country_code: 'BR',
+    device_type: 'mobile',
+    browser: 'Google Chrome',
+    os: 'Android',
+    referrer: 'facebook.com',
+    page_path: '/?view=noticias',
+  },
+  {
+    id: 'vis-6',
+    visited_at: new Date(Date.now() - 1000 * 60 * 210).toISOString(),
+    city: 'Belo Horizonte',
+    region: 'Minas Gerais',
+    region_code: 'MG',
+    country: 'Brasil',
+    country_code: 'BR',
+    device_type: 'desktop',
+    browser: 'Mozilla Firefox',
+    os: 'Linux',
+    referrer: 'Acesso Direto',
+    page_path: '/',
+  },
+  {
+    id: 'vis-7',
+    visited_at: new Date(Date.now() - 1000 * 60 * 360).toISOString(),
+    city: 'Juiz de Fora',
+    region: 'Minas Gerais',
+    region_code: 'MG',
+    country: 'Brasil',
+    country_code: 'BR',
+    device_type: 'mobile',
+    browser: 'Google Chrome',
+    os: 'Android',
+    referrer: 'whatsapp.com',
+    page_path: '/#academias',
+  },
+];
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) => {
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'academies' | 'requests' | 'donations' | 'approvals' | 'direct_upload' | 'news' | 'sponsors'
+    'overview' | 'analytics' | 'academies' | 'requests' | 'donations' | 'approvals' | 'direct_upload' | 'news' | 'sponsors'
   >('overview');
+
+  const [siteVisits, setSiteVisits] = useState<DatabaseSiteVisit[]>(INITIAL_VISITS);
+  const [visitsTimeFilter, setVisitsTimeFilter] = useState<'all' | 'today' | '7d' | '30d'>('all');
+  const [visitsSearch, setVisitsSearch] = useState('');
+  const [isRefreshingVisits, setIsRefreshingVisits] = useState(false);
 
   const [approvals, setApprovals] = useState<StudentApproval[]>(INITIAL_APPROVALS);
   const [newsList, setNewsList] = useState<NewsItem[]>(INITIAL_NEWS);
@@ -368,6 +480,129 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
   // Direct Upload Form State
   const [editingMedia, setEditingMedia] = useState<any | null>(null);
   const [directType, setDirectType] = useState<'music' | 'photo' | 'video' | 'media'>('photo');
+
+  // Filtered visits by selected timeframe
+  const filteredSiteVisits = useMemo(() => {
+    const now = new Date();
+    return siteVisits.filter((v) => {
+      if (!v.visited_at) return true;
+      const vDate = new Date(v.visited_at);
+      if (visitsTimeFilter === 'today') {
+        return vDate.toDateString() === now.toDateString();
+      }
+      if (visitsTimeFilter === '7d') {
+        const diffDays = (now.getTime() - vDate.getTime()) / (1000 * 60 * 60 * 24);
+        return diffDays <= 7;
+      }
+      if (visitsTimeFilter === '30d') {
+        const diffDays = (now.getTime() - vDate.getTime()) / (1000 * 60 * 60 * 24);
+        return diffDays <= 30;
+      }
+      return true;
+    });
+  }, [siteVisits, visitsTimeFilter]);
+
+  // Analytics Computations
+  const analyticsSummary = useMemo(() => {
+    const total = filteredSiteVisits.length;
+    const now = new Date();
+    const todayCount = siteVisits.filter(
+      (v) => new Date(v.visited_at).toDateString() === now.toDateString()
+    ).length;
+
+    // City distribution
+    const cityMap: Record<string, { city: string; region: string; count: number }> = {};
+    let mobileCount = 0;
+    let desktopCount = 0;
+    let tabletCount = 0;
+
+    filteredSiteVisits.forEach((v) => {
+      const cityName = v.city || 'Desconhecido';
+      const key = `${cityName}-${v.region_code || v.region || ''}`;
+      if (!cityMap[key]) {
+        cityMap[key] = {
+          city: cityName,
+          region: v.region_code || v.region || '',
+          count: 0,
+        };
+      }
+      cityMap[key].count += 1;
+
+      if (v.device_type === 'mobile') mobileCount += 1;
+      else if (v.device_type === 'tablet') tabletCount += 1;
+      else desktopCount += 1;
+    });
+
+    const topCities = Object.values(cityMap)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8)
+      .map((c) => ({
+        ...c,
+        percentage: total > 0 ? Math.round((c.count / total) * 100) : 0,
+      }));
+
+    const mobilePercent = total > 0 ? Math.round(((mobileCount + tabletCount) / total) * 100) : 0;
+    const desktopPercent = total > 0 ? Math.round((desktopCount / total) * 100) : 0;
+    const uniqueCitiesCount = Object.keys(cityMap).length;
+
+    return {
+      total,
+      todayCount,
+      topCities,
+      mobilePercent,
+      desktopPercent,
+      mobileCount,
+      desktopCount,
+      tabletCount,
+      uniqueCitiesCount,
+    };
+  }, [filteredSiteVisits, siteVisits]);
+
+  // Table search filtered visits
+  const tableVisits = useMemo(() => {
+    if (!visitsSearch.trim()) return filteredSiteVisits;
+    const q = visitsSearch.toLowerCase();
+    return filteredSiteVisits.filter(
+      (v) =>
+        (v.city && v.city.toLowerCase().includes(q)) ||
+        (v.region && v.region.toLowerCase().includes(q)) ||
+        (v.browser && v.browser.toLowerCase().includes(q)) ||
+        (v.os && v.os.toLowerCase().includes(q)) ||
+        (v.referrer && v.referrer.toLowerCase().includes(q)) ||
+        (v.device_type && v.device_type.toLowerCase().includes(q))
+    );
+  }, [filteredSiteVisits, visitsSearch]);
+
+  // Sum of all enrolled students and max capacity across all academies
+  const totalEnrolledStudents = useMemo(() => {
+    return academiesList.reduce((acc, item) => acc + (Number(item.students) || 0), 0);
+  }, [academiesList]);
+
+  const totalMaxCapacity = useMemo(() => {
+    return academiesList.reduce((acc, item) => acc + (Number(item.max) || 0), 0);
+  }, [academiesList]);
+
+  const handleRefreshVisits = async () => {
+    setIsRefreshingVisits(true);
+    try {
+      const { data } = await supabase
+        .from('site_visits')
+        .select('*')
+        .order('visited_at', { ascending: false })
+        .limit(500);
+
+      if (data && data.length > 0) {
+        setSiteVisits(data);
+        showToast('Dados de visitas atualizados com sucesso!');
+      } else {
+        showToast('Nenhuma nova visita registrada no momento.');
+      }
+    } catch {
+      showToast('Erro ao atualizar dados de visitas.');
+    } finally {
+      setTimeout(() => setIsRefreshingVisits(false), 600);
+    }
+  };
   const [directTitle, setDirectTitle] = useState('');
   const [directAuthor, setDirectAuthor] = useState('');
   const [directCategory, setDirectCategory] = useState('Batizados & Rodas');
@@ -520,6 +755,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
         if (sponsorsData && sponsorsData.length > 0) {
           setSponsorsList(sponsorsData);
         }
+
+        const { data: visitsData } = await supabase
+          .from('site_visits')
+          .select('*')
+          .order('visited_at', { ascending: false })
+          .limit(500);
+
+        if (visitsData && visitsData.length > 0) {
+          setSiteVisits(visitsData);
+        }
       } catch (err) {
         console.warn('Supabase not yet populated or offline, using fallback state:', err);
       }
@@ -545,6 +790,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
         fetchSupabaseData();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sponsors' }, () => {
+        fetchSupabaseData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_visits' }, () => {
         fetchSupabaseData();
       })
       .subscribe();
@@ -1532,6 +1780,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
           <nav className="space-y-1 text-xs font-semibold">
             {[
               { id: 'overview', label: 'Dashboard', icon: LayoutDashboard, color: 'from-emerald-400 to-teal-500' },
+              { id: 'analytics', label: 'Tráfego & Acessos', icon: Globe, color: 'from-cyan-400 to-blue-600' },
               { id: 'academies', label: 'Academias', icon: Users, color: 'from-blue-500 to-cyan-500' },
               { id: 'donations', label: 'Doações', icon: DollarSign, color: 'from-violet-500 to-purple-600' },
               { id: 'requests', label: 'Contatos', icon: MessageSquare, color: 'from-amber-500 to-orange-500' },
@@ -1703,31 +1952,47 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 </div>
               </div>
 
-              {/* Card 3: New Clients */}
-              <div className="p-4 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl flex items-center justify-between hover:border-white/20 transition-all">
+              {/* Card 3: Total Enrolled Students (Sum of all academies) */}
+              <div
+                onClick={() => setActiveTab('academies')}
+                className="p-4 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl flex items-center justify-between hover:border-[#EEDC9A]/40 transition-all cursor-pointer group"
+                title="Clique para visualizar e gerenciar as matrículas das academias"
+              >
                 <div>
-                  <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-0.5">New Clients</p>
+                  <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-0.5">Matrículas Totais</p>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-xl sm:text-2xl font-black text-white font-syne">+87</span>
-                    <span className="text-xs font-bold text-rose-400">-2%</span>
+                    <span className="text-xl sm:text-2xl font-black text-white font-syne group-hover:text-[#EEDC9A] transition-colors">
+                      +{totalEnrolledStudents.toLocaleString('pt-BR')}
+                    </span>
+                    <span className="text-xs font-bold text-emerald-400">
+                      {academiesList.length} Polos
+                    </span>
                   </div>
                 </div>
-                <div className="p-3 rounded-2xl bg-gradient-to-tr from-emerald-400 to-teal-500 text-black shadow-lg shadow-emerald-500/20">
-                  <MessageSquare className="w-5 h-5" />
+                <div className="p-3 rounded-2xl bg-gradient-to-tr from-amber-400 to-yellow-500 text-black shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform">
+                  <UserCheck className="w-5 h-5" />
                 </div>
               </div>
 
-              {/* Card 4: Sales / Visits */}
-              <div className="p-4 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl flex items-center justify-between hover:border-white/20 transition-all">
+              {/* Card 4: Live Visits / Geolocation */}
+              <div
+                onClick={() => setActiveTab('analytics')}
+                className="p-4 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl flex items-center justify-between hover:border-[#EEDC9A]/40 transition-all cursor-pointer group"
+                title="Clique para ver detalhes de tráfego e localização"
+              >
                 <div>
-                  <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-0.5">Sales / Visits</p>
+                  <p className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-0.5">Visitas / Acessos</p>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-xl sm:text-2xl font-black text-white font-syne">18.450</span>
-                    <span className="text-xs font-bold text-emerald-400">+5%</span>
+                    <span className="text-xl sm:text-2xl font-black text-white font-syne group-hover:text-[#EEDC9A] transition-colors">
+                      {siteVisits.length.toLocaleString('pt-BR')}
+                    </span>
+                    <span className="text-xs font-bold text-emerald-400">
+                      {analyticsSummary.todayCount > 0 ? `+${analyticsSummary.todayCount} hoje` : '+100%'}
+                    </span>
                   </div>
                 </div>
-                <div className="p-3 rounded-2xl bg-gradient-to-tr from-emerald-400 to-teal-500 text-black shadow-lg shadow-emerald-500/20">
-                  <Eye className="w-5 h-5" />
+                <div className="p-3 rounded-2xl bg-gradient-to-tr from-cyan-400 to-blue-600 text-black shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform">
+                  <Globe className="w-5 h-5" />
                 </div>
               </div>
             </div>
@@ -1993,6 +2258,359 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                     );
                   })}
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: TRAFFIC & GEOLOCATION ANALYTICS */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-6">
+            {/* Header & Controls */}
+            <div className="p-6 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-lg sm:text-xl font-bold text-white font-syne flex items-center gap-2.5">
+                    <Globe className="w-5 h-5 text-cyan-400" />
+                    Tráfego & Geolocalização
+                  </h3>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Tempo Real
+                  </span>
+                </div>
+                <p className="text-xs text-neutral-400 max-w-2xl leading-relaxed">
+                  Monitoramento interno de audiência: descubra de quais cidades e estados os visitantes estão acessando o site do <strong>Grupo Elite Nagô</strong>, tipos de dispositivos e páginas de entrada.
+                </p>
+              </div>
+
+              {/* Controls: Timeframe Filter + Refresh */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center bg-black/50 p-1 rounded-2xl border border-white/10">
+                  {[
+                    { id: 'all', label: 'Tudo' },
+                    { id: 'today', label: 'Hoje' },
+                    { id: '7d', label: '7 Dias' },
+                    { id: '30d', label: '30 Dias' },
+                  ].map((filter) => (
+                    <button
+                      key={filter.id}
+                      onClick={() => setVisitsTimeFilter(filter.id as any)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        visitsTimeFilter === filter.id
+                          ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black font-black shadow-md'
+                          : 'text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={handleRefreshVisits}
+                  disabled={isRefreshingVisits}
+                  className="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white transition-all cursor-pointer disabled:opacity-50"
+                  title="Atualizar dados de tráfego"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isRefreshingVisits ? 'animate-spin text-cyan-400' : ''}`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Top 4 KPI Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {/* Metric 1: Total Visits */}
+              <div className="p-5 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider mb-1">Total de Acessos</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-white font-syne">
+                      {analyticsSummary.total.toLocaleString('pt-BR')}
+                    </span>
+                    <span className="text-[11px] font-bold text-cyan-400">Período</span>
+                  </div>
+                </div>
+                <div className="p-3 rounded-2xl bg-gradient-to-tr from-cyan-400 to-blue-600 text-black shadow-lg shadow-cyan-500/20">
+                  <Activity className="w-5 h-5" />
+                </div>
+              </div>
+
+              {/* Metric 2: Today Visits */}
+              <div className="p-5 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider mb-1">Acessos Hoje</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-white font-syne">
+                      {analyticsSummary.todayCount.toLocaleString('pt-BR')}
+                    </span>
+                    <span className="text-[11px] font-bold text-emerald-400">Ao vivo</span>
+                  </div>
+                </div>
+                <div className="p-3 rounded-2xl bg-gradient-to-tr from-emerald-400 to-teal-500 text-black shadow-lg shadow-emerald-500/20">
+                  <Clock className="w-5 h-5" />
+                </div>
+              </div>
+
+              {/* Metric 3: Unique Cities */}
+              <div className="p-5 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider mb-1">Cidades Alcançadas</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-white font-syne">
+                      {analyticsSummary.uniqueCitiesCount}
+                    </span>
+                    <span className="text-[11px] font-bold text-amber-400">Polos & Cidades</span>
+                  </div>
+                </div>
+                <div className="p-3 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 text-black shadow-lg shadow-amber-500/20">
+                  <MapPin className="w-5 h-5" />
+                </div>
+              </div>
+
+              {/* Metric 4: Mobile vs Desktop */}
+              <div className="p-5 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider mb-1">Dispositivos Mobile</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-white font-syne">
+                      {analyticsSummary.mobilePercent}%
+                    </span>
+                    <span className="text-[11px] font-bold text-purple-400">
+                      {analyticsSummary.desktopPercent}% Desktop
+                    </span>
+                  </div>
+                </div>
+                <div className="p-3 rounded-2xl bg-gradient-to-tr from-violet-400 to-purple-600 text-black shadow-lg shadow-purple-500/20">
+                  <Smartphone className="w-5 h-5" />
+                </div>
+              </div>
+            </div>
+
+            {/* 2-Column Analytics Distribution */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+              {/* Left 7-Col: Top Cities & States Ranking */}
+              <div className="lg:col-span-7 p-6 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-5">
+                    <h4 className="text-sm font-bold text-white font-syne flex items-center gap-2">
+                      <Compass className="w-4 h-4 text-[#EEDC9A]" />
+                      Ranking de Cidades com Mais Acessos
+                    </h4>
+                    <span className="text-xs text-neutral-400 font-mono">Top Cidades</span>
+                  </div>
+
+                  {analyticsSummary.topCities.length === 0 ? (
+                    <div className="py-8 text-center text-neutral-500 text-xs">
+                      Nenhuma localização registrada ainda.
+                    </div>
+                  ) : (
+                    <div className="space-y-3.5">
+                      {analyticsSummary.topCities.map((item, idx) => (
+                        <div key={`${item.city}-${idx}`} className="space-y-1.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="w-5 h-5 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-bold text-[#EEDC9A]">
+                                {idx + 1}
+                              </span>
+                              <span className="font-bold text-white">
+                                {item.city} {item.region ? `(${item.region})` : ''}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 font-mono text-[11px]">
+                              <span className="text-[#EEDC9A] font-bold">{item.count} acessos</span>
+                              <span className="text-neutral-500">({item.percentage}%)</span>
+                            </div>
+                          </div>
+                          {/* Progress Bar */}
+                          <div className="h-2 w-full rounded-full bg-neutral-900 overflow-hidden border border-white/5">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-amber-300 to-emerald-400 transition-all duration-500"
+                              style={{ width: `${Math.max(item.percentage, 6)}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-neutral-400">
+                  <span>Origem principal: <strong>Brasil (BR)</strong></span>
+                  <span className="text-emerald-400 font-bold">Foco: Juiz de Fora & Zona da Mata</span>
+                </div>
+              </div>
+
+              {/* Right 5-Col: Device & Browser Breakdown */}
+              <div className="lg:col-span-5 p-6 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl flex flex-col justify-between">
+                <div>
+                  <h4 className="text-sm font-bold text-white font-syne mb-5 flex items-center gap-2">
+                    <Laptop className="w-4 h-4 text-cyan-400" />
+                    Dispositivos & Tecnologia
+                  </h4>
+
+                  {/* Device Badges Grid */}
+                  <div className="grid grid-cols-3 gap-3 mb-6">
+                    <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 flex flex-col items-center text-center">
+                      <Smartphone className="w-5 h-5 text-purple-400 mb-1" />
+                      <span className="text-[11px] font-bold text-white">Mobile</span>
+                      <span className="text-xs font-mono text-purple-300 font-bold mt-0.5">
+                        {analyticsSummary.mobileCount}
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 flex flex-col items-center text-center">
+                      <Laptop className="w-5 h-5 text-cyan-400 mb-1" />
+                      <span className="text-[11px] font-bold text-white">Desktop</span>
+                      <span className="text-xs font-mono text-cyan-300 font-bold mt-0.5">
+                        {analyticsSummary.desktopCount}
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 flex flex-col items-center text-center">
+                      <Tablet className="w-5 h-5 text-amber-400 mb-1" />
+                      <span className="text-[11px] font-bold text-white">Tablet</span>
+                      <span className="text-xs font-mono text-amber-300 font-bold mt-0.5">
+                        {analyticsSummary.tabletCount}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Operational Notes */}
+                  <div className="space-y-2.5 p-4 rounded-2xl bg-black/30 border border-white/5 text-xs text-neutral-300">
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-400">Armazenamento:</span>
+                      <strong className="text-white">Supabase PostgreSQL</strong>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-400">Atualização:</span>
+                      <strong className="text-emerald-400">Automática & Realtime</strong>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-400">Privacidade:</span>
+                      <strong className="text-neutral-300">IDs Anônimos & Sem Cookies</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-white/10 text-center text-xs text-neutral-400">
+                  Dados preservados para estratégias de expansão de polos de capoeira.
+                </div>
+              </div>
+            </div>
+
+            {/* REAL-TIME VISITOR LOG TABLE */}
+            <div className="p-6 rounded-3xl bg-[#0e0e14]/90 border border-white/10 shadow-xl backdrop-blur-xl space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                <div>
+                  <h4 className="text-base font-bold text-white font-syne flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-emerald-400" />
+                    Histórico Recente de Visitas
+                  </h4>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Registros capturados em tempo real na entrada de usuários.
+                  </p>
+                </div>
+
+                {/* Table Search */}
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+                  <input
+                    type="text"
+                    value={visitsSearch}
+                    onChange={(e) => setVisitsSearch(e.target.value)}
+                    placeholder="Filtrar cidade, SO, navegador..."
+                    className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-white text-xs focus:outline-none focus:border-cyan-400 placeholder:text-neutral-600"
+                  />
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-white/10 text-neutral-400 font-mono text-[11px] uppercase tracking-wider">
+                      <th className="py-3 px-3">Data / Hora</th>
+                      <th className="py-3 px-3">Localização</th>
+                      <th className="py-3 px-3">Dispositivo / SO</th>
+                      <th className="py-3 px-3">Navegador</th>
+                      <th className="py-3 px-3">Origem</th>
+                      <th className="py-3 px-3">Página</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {tableVisits.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-neutral-500">
+                          Nenhum acesso correspondente encontrado.
+                        </td>
+                      </tr>
+                    ) : (
+                      tableVisits.slice(0, 50).map((v) => {
+                        const dateObj = v.visited_at ? new Date(v.visited_at) : new Date();
+                        const formattedDate = dateObj.toLocaleDateString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                        });
+                        const formattedTime = dateObj.toLocaleTimeString('pt-BR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        });
+
+                        return (
+                          <tr key={v.id} className="hover:bg-white/5 transition-colors">
+                            <td className="py-3 px-3 whitespace-nowrap font-mono text-neutral-300">
+                              <span className="text-white font-bold">{formattedDate}</span>{' '}
+                              <span className="text-neutral-500">{formattedTime}</span>
+                            </td>
+
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <div className="flex items-center gap-1.5 font-semibold text-white">
+                                <span className="text-sm">🇧🇷</span>
+                                <span>{v.city || 'Desconhecido'}</span>
+                                {v.region_code && (
+                                  <span className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-amber-300 font-mono">
+                                    {v.region_code}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <div className="flex items-center gap-1.5 text-neutral-300">
+                                {v.device_type === 'mobile' ? (
+                                  <Smartphone className="w-3.5 h-3.5 text-purple-400" />
+                                ) : v.device_type === 'tablet' ? (
+                                  <Tablet className="w-3.5 h-3.5 text-amber-400" />
+                                ) : (
+                                  <Laptop className="w-3.5 h-3.5 text-cyan-400" />
+                                )}
+                                <span className="capitalize">{v.device_type || 'Desktop'}</span>
+                                {v.os && <span className="text-neutral-500">• {v.os}</span>}
+                              </div>
+                            </td>
+
+                            <td className="py-3 px-3 whitespace-nowrap text-neutral-300">
+                              {v.browser || 'Navegador'}
+                            </td>
+
+                            <td className="py-3 px-3 whitespace-nowrap text-neutral-400">
+                              <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px]">
+                                {v.referrer || 'Acesso Direto'}
+                              </span>
+                            </td>
+
+                            <td className="py-3 px-3 whitespace-nowrap font-mono text-[11px] text-neutral-400 truncate max-w-[120px]">
+                              {v.page_path || '/'}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -3408,8 +4026,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                     <div
                       key={sponsor.id}
                       className={`p-4 rounded-3xl bg-[#0e0e14]/90 border transition-all flex flex-col justify-between space-y-3 ${isBeingEdited
-                          ? 'border-pink-500/60 bg-pink-950/20 shadow-xl shadow-pink-500/10'
-                          : 'border-white/10 hover:border-white/20'
+                        ? 'border-pink-500/60 bg-pink-950/20 shadow-xl shadow-pink-500/10'
+                        : 'border-white/10 hover:border-white/20'
                         }`}
                     >
                       <div>
@@ -3468,8 +4086,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                           type="button"
                           onClick={(e) => handleStartEditSponsor(sponsor, e)}
                           className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold ${isBeingEdited
-                              ? 'bg-pink-500 text-white border-pink-500'
-                              : 'bg-pink-500/10 hover:bg-pink-500/20 text-pink-300 border-pink-500/30'
+                            ? 'bg-pink-500 text-white border-pink-500'
+                            : 'bg-pink-500/10 hover:bg-pink-500/20 text-pink-300 border-pink-500/30'
                             }`}
                           title="Editar apoiador"
                         >

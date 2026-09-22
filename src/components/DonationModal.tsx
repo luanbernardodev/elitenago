@@ -25,13 +25,23 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
   const [copiedBtc, setCopiedBtc] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Card Form State
+  // Donor & Card Form State
+  const [donorEmail, setDonorEmail] = useState('');
+  const [donorCpf, setDonorCpf] = useState('');
   const [cardName, setCardName] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvv, setCardCvv] = useState('');
 
   if (!isOpen) return null;
+
+  const formatCpf = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
+  };
 
   const currentAmountValue =
     selectedAmount === 'custom' ? parseFloat(customAmount) || 0 : selectedAmount;
@@ -62,6 +72,12 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
 
   const resetAndClose = () => {
     setIsSuccess(false);
+    setDonorEmail('');
+    setDonorCpf('');
+    setCardName('');
+    setCardNumber('');
+    setCardExpiry('');
+    setCardCvv('');
     onClose();
   };
 
@@ -369,6 +385,39 @@ export const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose })
               {/* CARD METHOD */}
               {paymentMethod === 'card' && (
                 <form onSubmit={handleCardSubmit} className="space-y-3 text-left">
+                  {/* Row 1: E-mail & CPF */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] text-neutral-300 mb-1">
+                        E-mail do Doador
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={donorEmail}
+                        onChange={(e) => setDonorEmail(e.target.value)}
+                        placeholder="seu@email.com"
+                        className="w-full px-3.5 py-2 rounded-xl bg-black/60 border border-white/15 text-xs text-[#F5E8C7] focus:outline-none focus:border-[#EEDC9A]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] text-neutral-300 mb-1">
+                        CPF do Titular
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        maxLength={14}
+                        value={donorCpf}
+                        onChange={(e) => setDonorCpf(formatCpf(e.target.value))}
+                        placeholder="000.000.000-00"
+                        className="w-full px-3.5 py-2 rounded-xl bg-black/60 border border-white/15 text-xs text-[#F5E8C7] focus:outline-none focus:border-[#EEDC9A]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 2: Nome no Cartão & Número do Cartão */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                       <label className="block text-[11px] text-neutral-300 mb-1">

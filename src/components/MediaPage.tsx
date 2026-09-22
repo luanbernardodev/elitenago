@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   ArrowLeft,
   Share2,
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { DomeGallery } from './ui/DomeGallery';
 import { GooeyInput } from './ui/gooey-input';
+import { StarBorder } from './ui/StarBorder';
 import { supabase, triggerFileDownload, DatabaseMedia } from '../lib/supabase';
 
 interface MediaPageProps {
@@ -267,6 +268,73 @@ export const MediaPage: React.FC<MediaPageProps> = ({ onBackToHome }) => {
       return true;
     });
   }, [allMediaItems, selectedCategory, searchQuery]);
+
+  // Active media list for modal lightbox navigation (uses filtered list if non-empty, else all items)
+  const activeMediaList = useMemo(() => {
+    return filteredMedias.length > 0 ? filteredMedias : allMediaItems;
+  }, [filteredMedias, allMediaItems]);
+
+  const currentMediaIndex = useMemo(() => {
+    if (!previewMedia) return -1;
+    return activeMediaList.findIndex(
+      (m: DatabaseMedia) => m.id === previewMedia.id || m.url === previewMedia.url
+    );
+  }, [previewMedia, activeMediaList]);
+
+  const handlePrevMedia = useCallback((e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (activeMediaList.length <= 1) return;
+    const newIndex = currentMediaIndex <= 0 ? activeMediaList.length - 1 : currentMediaIndex - 1;
+    setPreviewMedia(activeMediaList[newIndex]);
+  }, [currentMediaIndex, activeMediaList]);
+
+  const handleNextMedia = useCallback((e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (activeMediaList.length <= 1) return;
+    const newIndex = currentMediaIndex === -1 || currentMediaIndex >= activeMediaList.length - 1 ? 0 : currentMediaIndex + 1;
+    setPreviewMedia(activeMediaList[newIndex]);
+  }, [currentMediaIndex, activeMediaList]);
+
+  // Keyboard navigation support (ArrowLeft, ArrowRight, Escape)
+  useEffect(() => {
+    if (!previewMedia) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setPreviewMedia(null);
+      } else if (e.key === 'ArrowLeft') {
+        handlePrevMedia();
+      } else if (e.key === 'ArrowRight') {
+        handleNextMedia();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [previewMedia, handlePrevMedia, handleNextMedia]);
+
+  // Touch gesture swipe handling for mobile devices
+  const touchStartXRef = useRef<number | null>(null);
+  const touchEndXRef = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchEndXRef.current = null;
+    touchStartXRef.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndXRef.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartXRef.current === null || touchEndXRef.current === null) return;
+    const distance = touchStartXRef.current - touchEndXRef.current;
+    if (distance > 50) {
+      handleNextMedia();
+    } else if (distance < -50) {
+      handlePrevMedia();
+    }
+  };
 
   // Pagination calculation
   const totalPages = Math.max(1, Math.ceil(filteredMedias.length / ITEMS_PER_PAGE));
@@ -717,11 +785,11 @@ export const MediaPage: React.FC<MediaPageProps> = ({ onBackToHome }) => {
         </main>
       )}
 
-      {/* MODAL PREVIEW LIGHTBOX (Photos & Videos only) */}
+      {/* MODAL PREVIEW LIGHTBOX (Photos & Videos with Next/Prev navigation) */}
       {previewMedia && (
         <div
           onClick={() => setPreviewMedia(null)}
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fadeIn"
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fadeIn"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -729,20 +797,34 @@ export const MediaPage: React.FC<MediaPageProps> = ({ onBackToHome }) => {
           >
             {/* Modal Header */}
             <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between gap-3 bg-black/40">
-              <div>
-                <span className="text-[10px] font-bold uppercase text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-full border border-amber-400/20">
-                  {previewMedia.category || 'Mídia Elite Nagô'}
-                </span>
-                <h3 className="text-base sm:text-lg font-bold text-white font-syne mt-1">
+              <div className="flex flex-col items-start gap-1.5 min-w-0 pr-2">
+                <StarBorder
+                  as="div"
+                  color="#EEDC9A"
+                  speed="4s"
+                  thickness={1}
+                  backgroundColor="rgba(20, 20, 25, 0.85)"
+                  borderColor="rgba(238, 220, 154, 0.3)"
+                  className="shrink-0"
+                  innerClassName="px-2.5 sm:px-3 py-1 text-[10px] sm:text-[11px] font-syne font-bold uppercase tracking-wider text-amber-200 shadow-sm whitespace-nowrap"
+                >
+                  {previewMedia.category || 'Batizados & Rodas'}
+                </StarBorder>
+                <h3 className="text-base sm:text-lg font-bold text-white font-syne truncate max-w-xs sm:max-w-md lg:max-w-xl">
                   {previewMedia.title}
                 </h3>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
+                {activeMediaList.length > 1 && (
+                  <span className="hidden sm:inline-flex px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono text-neutral-400">
+                    {currentMediaIndex >= 0 ? currentMediaIndex + 1 : 1} / {activeMediaList.length}
+                  </span>
+                )}
                 {previewMedia.url && (
                   <button
                     onClick={() => handleDownload(previewMedia)}
-                    className="px-4 py-2 rounded-2xl bg-emerald-500 text-black font-bold text-xs flex items-center gap-1.5 hover:bg-emerald-400 transition-all cursor-pointer shadow-lg"
+                    className="px-3 sm:px-4 py-2 rounded-2xl bg-emerald-500 text-black font-bold text-xs flex items-center gap-1.5 hover:bg-emerald-400 transition-all cursor-pointer shadow-lg active:scale-95"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Baixar Arquivo {previewMedia.file_size ? `(${previewMedia.file_size})` : ''}</span>
@@ -750,27 +832,61 @@ export const MediaPage: React.FC<MediaPageProps> = ({ onBackToHome }) => {
                 )}
                 <button
                   onClick={() => setPreviewMedia(null)}
-                  className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-neutral-300 hover:text-white transition-all cursor-pointer"
+                  className="p-2 rounded-2xl bg-white/10 hover:bg-white/20 text-neutral-300 hover:text-white transition-all cursor-pointer active:scale-95"
+                  title="Fechar (Esc)"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            {/* Modal Media Preview */}
-            <div className="relative bg-black flex items-center justify-center max-h-[60vh] sm:max-h-[65vh] overflow-hidden">
+            {/* Modal Media Preview Container with Next/Previous Arrows & Swipe Support */}
+            <div
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              className="relative bg-black flex items-center justify-center min-h-[300px] max-h-[60vh] sm:max-h-[68vh] overflow-hidden group/media"
+            >
+              {activeMediaList.length > 1 && (
+                <>
+                  {/* Left / Previous Arrow Button */}
+                  <button
+                    type="button"
+                    onClick={handlePrevMedia}
+                    className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/70 hover:bg-black/95 text-white/90 hover:text-white border border-white/20 hover:border-amber-400/80 backdrop-blur-md flex items-center justify-center transition-all duration-200 shadow-[0_4px_24px_rgba(0,0,0,0.85)] hover:scale-110 cursor-pointer active:scale-95 group/btn"
+                    title="Mídia anterior (Seta esquerda ou deslize)"
+                    aria-label="Mídia anterior"
+                  >
+                    <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 transition-transform group-hover/btn:-translate-x-0.5" />
+                  </button>
+
+                  {/* Right / Next Arrow Button */}
+                  <button
+                    type="button"
+                    onClick={handleNextMedia}
+                    className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/70 hover:bg-black/95 text-white/90 hover:text-white border border-white/20 hover:border-amber-400/80 backdrop-blur-md flex items-center justify-center transition-all duration-200 shadow-[0_4px_24px_rgba(0,0,0,0.85)] hover:scale-110 cursor-pointer active:scale-95 group/btn"
+                    title="Próxima mídia (Seta direita ou deslize)"
+                    aria-label="Próxima mídia"
+                  >
+                    <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 transition-transform group-hover/btn:translate-x-0.5" />
+                  </button>
+                </>
+              )}
+
               {previewMedia.file_type === 'video' || previewMedia.type === 'video' ? (
                 <video
+                  key={previewMedia.url || previewMedia.id}
                   src={previewMedia.url}
                   controls
                   autoPlay
-                  className="max-h-[60vh] w-full object-contain"
+                  className="max-h-[60vh] sm:max-h-[68vh] w-full object-contain"
                 />
               ) : (
                 <img
+                  key={previewMedia.url || previewMedia.id}
                   src={previewMedia.url || previewMedia.thumbnail_url}
                   alt={previewMedia.title}
-                  className="max-h-[60vh] w-full object-contain"
+                  className="max-h-[60vh] sm:max-h-[68vh] w-full object-contain select-none"
                 />
               )}
             </div>
@@ -781,6 +897,28 @@ export const MediaPage: React.FC<MediaPageProps> = ({ onBackToHome }) => {
                 <p className="text-white font-semibold">{previewMedia.description || 'Mídia Oficial do Grupo Elite Nagô'}</p>
                 <p className="text-neutral-500 mt-0.5">Autor: {previewMedia.author || 'Elite Nagô'}</p>
               </div>
+
+              {activeMediaList.length > 1 && (
+                <div className="flex items-center justify-between sm:hidden pt-2 border-t border-white/10">
+                  <span className="text-[11px] font-mono text-neutral-400">
+                    {currentMediaIndex >= 0 ? currentMediaIndex + 1 : 1} de {activeMediaList.length} mídias
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handlePrevMedia}
+                      className="px-3 py-1 rounded-lg bg-white/10 text-neutral-200 border border-white/10 text-xs font-bold active:scale-95"
+                    >
+                      Anterior
+                    </button>
+                    <button
+                      onClick={handleNextMedia}
+                      className="px-3 py-1 rounded-lg bg-white/10 text-neutral-200 border border-white/10 text-xs font-bold active:scale-95"
+                    >
+                      Próximo
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

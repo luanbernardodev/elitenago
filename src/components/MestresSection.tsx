@@ -9,7 +9,6 @@ interface LeadershipMember {
   role: string;
   yearsActive: string;
   specialty: string;
-  quote: string;
   image: string;
 }
 
@@ -21,7 +20,6 @@ const LEADERSHIP: LeadershipMember[] = [
     role: 'Coordenação Geral',
     yearsActive: '35+ Anos de Capoeira',
     specialty: 'Mandinga, Toques de Berimbau & Tradição',
-    quote: 'Frase utilizada pelo Mestre Pinheiro',
     image: '/img/mestre_pinheiro.jpg',
   },
   {
@@ -31,7 +29,6 @@ const LEADERSHIP: LeadershipMember[] = [
     role: 'Coordenação de Ensino',
     yearsActive: '22 Anos de Capoeira',
     specialty: 'São Bento Grande, Agilidade & Floreios',
-    quote: 'Frase utilizada pelo Contramestre soldado',
     image: '/img/cm_soldado.jpg',
   },
   {
@@ -41,7 +38,6 @@ const LEADERSHIP: LeadershipMember[] = [
     role: 'Diretor de Projetos Infantis',
     yearsActive: '15 Anos de Capoeira',
     specialty: 'Pedagogia da Capoeira Infantil & Cidadania',
-    quote: 'Frase utilizada pelo Professor Dom Ruan',
     image: '/img/professor_dom_ruan.jpeg',
   },
 ];
@@ -111,12 +107,6 @@ export const MestresSection: React.FC = () => {
                     <p className="text-xs text-neutral-300 font-light line-clamp-2 leading-relaxed">
                       {member.specialty}
                     </p>
-
-                    <div className="pt-2 border-t border-white/15">
-                      <p className="text-[11px] font-mono text-amber-200/90 italic">
-                        "{member.quote}"
-                      </p>
-                    </div>
                   </div>
                 </div>
               </Card>

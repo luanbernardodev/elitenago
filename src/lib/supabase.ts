@@ -106,6 +106,25 @@ export interface DatabaseSponsor {
   created_at?: string;
 }
 
+export interface DatabaseSiteVisit {
+  id: string;
+  visited_at: string;
+  visitor_id?: string;
+  city?: string | null;
+  region?: string | null;
+  region_code?: string | null;
+  country?: string | null;
+  country_code?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  device_type?: 'mobile' | 'desktop' | 'tablet' | string;
+  browser?: string | null;
+  os?: string | null;
+  referrer?: string | null;
+  page_path?: string | null;
+  user_agent?: string | null;
+}
+
 export function formatFileSize(bytes: number): string {
   if (!bytes || bytes === 0) return '0 B';
   const k = 1024;

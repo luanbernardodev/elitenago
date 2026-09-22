@@ -15,10 +15,16 @@ import { SoundboardSection } from './components/SoundboardSection';
 import { AcademySection } from './components/AcademySection';
 import { ContactFooter } from './components/ContactFooter';
 import { ScrollTopButton } from './components/ScrollTopButton';
+import { trackSiteVisit } from './lib/visitorTracker';
 
 export function App() {
   const [currentView, setCurrentView] = useState<'home' | 'noticias' | 'playlist' | 'midias' | 'admin'>('home');
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Automatically track site visit with geolocation on mount (runs once in background)
+  useEffect(() => {
+    trackSiteVisit();
+  }, []);
 
   // Check URL params / hash on mount and on popstate
   useEffect(() => {
