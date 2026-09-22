@@ -1,61 +1,83 @@
-import React from 'react';
-import { ScrollFloat } from './ScrollFloat';
+import React, { useEffect, useState } from 'react';
 import { CircularGallery } from './ui/CircularGallery';
 import { InteractiveHoverButton } from '@/registry/magicui/interactive-hover-button';
+import { supabase, DatabaseMedia } from '../lib/supabase';
 
 interface MediaSectionProps {
   onOpenMediaPage?: () => void;
 }
 
-const CIRCULAR_GALLERY_ITEMS = [
-  {
-    image: 'https://i.imgur.com/A46hzMt.jpeg',
-    text: ''
-  },
-  {
-    image: '/img/cm_soldado.jpg',
-    text: ''
-  },
-  {
-    image: 'https://i.imgur.com/RWa2XaP.jpeg',
-    text: ''
-  },
-  {
-    image: '/img/mestre_pinheiro.jpg',
-    text: ''
-  },
-  {
-    image: 'https://i.imgur.com/TOTCg4x.jpeg',
-    text: ''
-  },
-  {
-    image: '/img/professor_dom_ruan.jpeg',
-    text: ''
-  },
-  {
-    image: 'https://i.imgur.com/IiYz7yh.jpeg',
-    text: ''
-  },
-  {
-    image: 'https://i.imgur.com/phPJ0Qh.jpeg',
-    text: ''
-  },
-  {
-    image: 'https://i.imgur.com/N3HsBOJ.jpeg',
-    text: ''
-  },
-  {
-    image: 'https://i.imgur.com/JtVhftz.jpeg',
-    text: ''
-  }
+const DEFAULT_GALLERY_ITEMS = [
+  { image: 'https://i.imgur.com/A46hzMt.jpeg', text: '' },
+  { image: '/img/cm_soldado.jpg', text: '' },
+  { image: 'https://i.imgur.com/RWa2XaP.jpeg', text: '' },
+  { image: '/img/mestre_pinheiro.jpg', text: '' },
+  { image: 'https://i.imgur.com/TOTCg4x.jpeg', text: '' },
+  { image: '/img/professor_dom_ruan.jpeg', text: '' },
+  { image: 'https://i.imgur.com/IiYz7yh.jpeg', text: '' },
+  { image: 'https://i.imgur.com/phPJ0Qh.jpeg', text: '' },
+  { image: 'https://i.imgur.com/N3HsBOJ.jpeg', text: '' },
+  { image: 'https://i.imgur.com/JtVhftz.jpeg', text: '' }
 ];
 
 export const MediaSection: React.FC<MediaSectionProps> = ({ onOpenMediaPage }) => {
+  const [galleryItems, setGalleryItems] = useState<{ image: string; text: string }[]>(DEFAULT_GALLERY_ITEMS);
+
+  useEffect(() => {
+    const fetchMedias = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('medias')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data && data.length > 0) {
+          // Filter STRICTLY for photos only on homepage (ignore videos and audios for clean visual aesthetic)
+          const photoMedias = data.filter((m: DatabaseMedia) => {
+            const isVideo = m.file_type === 'video' || m.type === 'video';
+            const isAudio = m.type === 'music' || m.file_type === 'audio';
+            const hasValidImage = m.url && !m.url.endsWith('.mp4') && !m.url.endsWith('.webm');
+            return !isVideo && !isAudio && hasValidImage;
+          });
+
+          // Map to 3D gallery items with text: '' (no titles on homepage cards)
+          const dynamicItems = photoMedias.map((m: DatabaseMedia) => {
+            return {
+              image: m.url || m.thumbnail_url || 'https://i.imgur.com/A46hzMt.jpeg',
+              text: '', // No title displayed on homepage carousel
+            };
+          });
+
+          // Merge with default items to ensure a rich 10-item photo carousel
+          const combined = [...dynamicItems, ...DEFAULT_GALLERY_ITEMS];
+          const unique = Array.from(new Map(combined.map(item => [item.image, item])).values()).slice(0, 10);
+          setGalleryItems(unique);
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar mídias recentes do Supabase:', err);
+      }
+    };
+
+    fetchMedias();
+
+    // Realtime subscription for instant updates when admin uploads media
+    const channel = supabase
+      .channel('home-media-section')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'medias' }, () => {
+        fetchMedias();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const handleOpenAllMedia = () => {
     if (onOpenMediaPage) {
       onOpenMediaPage();
     } else {
-      window.open('?view=midias', '_blank');
+      window.open('?view=midias', '_self');
     }
   };
 
@@ -64,15 +86,7 @@ export const MediaSection: React.FC<MediaSectionProps> = ({ onOpenMediaPage }) =
       id="midias"
       className="relative py-14 sm:py-20 w-full overflow-hidden z-10"
     >
-      {/* Section Header */}
-      <div className="flex flex-col justify-center items-center text-center max-w-3xl mx-auto mb-6 sm:mb-8 px-4">
-        <ScrollFloat
-          containerClassName="text-3xl sm:text-4xl lg:text-5xl font-black font-syne text-white uppercase tracking-tight flex justify-center text-center"
-          textClassName="justify-center text-center"
-        >
-          Mídias
-        </ScrollFloat>
-      </div>
+
 
       {/* Circular Gallery Container with Edge Fades */}
       <div className="w-full h-[380px] sm:h-[460px] lg:h-[520px] relative overflow-hidden bg-transparent select-none touch-pan-y">
@@ -83,7 +97,8 @@ export const MediaSection: React.FC<MediaSectionProps> = ({ onOpenMediaPage }) =
         <div className="absolute right-0 top-0 bottom-0 w-12 sm:w-28 lg:w-48 z-10 pointer-events-none bg-gradient-to-l from-[#050505] via-[#050505]/70 to-transparent" />
 
         <CircularGallery
-          items={CIRCULAR_GALLERY_ITEMS}
+          key={galleryItems.length}
+          items={galleryItems}
           bend={1.4}
           textColor="#EEDC9A"
           borderRadius={0.06}
@@ -100,7 +115,6 @@ export const MediaSection: React.FC<MediaSectionProps> = ({ onOpenMediaPage }) =
           className="px-8 py-3.5 text-xs sm:text-sm font-bold flex items-center gap-2"
         >
           <span>Todas as Mídias</span>
-
         </InteractiveHoverButton>
       </div>
     </section>
@@ -108,3 +122,4 @@ export const MediaSection: React.FC<MediaSectionProps> = ({ onOpenMediaPage }) =
 };
 
 export default MediaSection;
+

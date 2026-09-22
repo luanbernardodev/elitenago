@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useRef, useCallback } from 'react';
 import { useGesture } from '@use-gesture/react';
+import { triggerFileDownload } from '../../lib/supabase';
 
-export type ImageItem = string | { src: string; alt?: string };
+export type ImageItem =
+  | string
+  | {
+      src: string;
+      alt?: string;
+      isVideo?: boolean;
+      videoUrl?: string;
+      title?: string;
+      mediaData?: any;
+    };
 
 export type DomeGalleryProps = {
   images?: ImageItem[];
@@ -21,6 +31,7 @@ export type DomeGalleryProps = {
   imageBorderRadius?: string;
   openedImageBorderRadius?: string;
   grayscale?: boolean;
+  onItemClick?: (item: any) => void;
 };
 
 type ItemDef = {
@@ -30,6 +41,9 @@ type ItemDef = {
   y: number;
   sizeX: number;
   sizeY: number;
+  isVideo?: boolean;
+  videoUrl?: string;
+  mediaData?: any;
 };
 
 const DEFAULT_IMAGES: ImageItem[] = [
@@ -116,9 +130,17 @@ function buildItems(pool: ImageItem[], seg: number): ItemDef[] {
 
   const normalizedImages = pool.map(image => {
     if (typeof image === 'string') {
-      return { src: image, alt: '' };
+      const isVid = image.endsWith('.mp4') || image.endsWith('.webm');
+      return { src: image, alt: '', isVideo: isVid, videoUrl: isVid ? image : undefined };
     }
-    return { src: image.src || '', alt: image.alt || '' };
+    const isVid = image.isVideo || (image.videoUrl ? true : (image.src?.endsWith('.mp4') || image.src?.endsWith('.webm')));
+    return {
+      src: image.src || '',
+      alt: image.alt || '',
+      isVideo: Boolean(isVid),
+      videoUrl: image.videoUrl || (isVid ? image.src : undefined),
+      mediaData: image.mediaData,
+    };
   });
 
   const usedImages = Array.from({ length: totalSlots }, (_, i) => normalizedImages[i % normalizedImages.length]);
@@ -139,7 +161,10 @@ function buildItems(pool: ImageItem[], seg: number): ItemDef[] {
   return coords.map((c, i) => ({
     ...c,
     src: usedImages[i].src,
-    alt: usedImages[i].alt
+    alt: usedImages[i].alt,
+    isVideo: usedImages[i].isVideo,
+    videoUrl: usedImages[i].videoUrl,
+    mediaData: usedImages[i].mediaData,
   }));
 }
 
@@ -167,7 +192,8 @@ export function DomeGallery({
   openedImageHeight = '400px',
   imageBorderRadius = '30px',
   openedImageBorderRadius = '30px',
-  grayscale = false
+  grayscale = false,
+  onItemClick
 }: DomeGalleryProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
@@ -444,21 +470,45 @@ export function DomeGallery({
     if (!scrim) return;
 
     const close = () => {
-      if (performance.now() - openStartedAtRef.current < 250) return;
+      if (performance.now() - openStartedAtRef.current < 200) return;
       const el = focusedElRef.current;
-      if (!el) return;
-      const parent = el.parentElement as HTMLElement;
       const overlay = viewerRef.current?.querySelector('.enlarge') as HTMLElement | null;
-      if (!overlay) return;
 
-      const refDiv = parent.querySelector('.item__image--reference') as HTMLElement | null;
+      // Always reset scrim and unlock scroll immediately
+      if (scrimRef.current) {
+        scrimRef.current.style.pointerEvents = 'none';
+        scrimRef.current.style.opacity = '0';
+      }
+      document.body.classList.remove('dg-scroll-lock');
+      scrollLockedRef.current = false;
 
+      if (!el || !overlay) {
+        if (overlay) overlay.remove();
+        focusedElRef.current = null;
+        rootRef.current?.removeAttribute('data-enlarging');
+        openingRef.current = false;
+        return;
+      }
+
+      // Pause and clean up any playing video inside overlay
+      const vid = overlay.querySelector('video');
+      if (vid) {
+        vid.pause();
+        vid.removeAttribute('src');
+        vid.load();
+      }
+
+      const parent = el.parentElement as HTMLElement;
+      const refDiv = parent ? (parent.querySelector('.item__image--reference') as HTMLElement | null) : null;
       const originalPos = originalTilePositionRef.current;
-      if (!originalPos) {
+
+      if (!originalPos || !parent) {
         overlay.remove();
         if (refDiv) refDiv.remove();
-        parent.style.setProperty('--rot-y-delta', `0deg`);
-        parent.style.setProperty('--rot-x-delta', `0deg`);
+        if (parent) {
+          parent.style.setProperty('--rot-y-delta', `0deg`);
+          parent.style.setProperty('--rot-x-delta', `0deg`);
+        }
         el.style.visibility = '';
         (el.style as any).zIndex = 0;
         focusedElRef.current = null;
@@ -523,7 +573,10 @@ export function DomeGallery({
         animatingOverlay.style.opacity = '0';
       });
 
+      let cleanedUp = false;
       const cleanup = () => {
+        if (cleanedUp) return;
+        cleanedUp = true;
         animatingOverlay.remove();
         originalTilePositionRef.current = null;
 
@@ -551,18 +604,16 @@ export function DomeGallery({
                 el.style.transition = '';
                 el.style.opacity = '';
                 openingRef.current = false;
-                if (!draggingRef.current && rootRef.current?.getAttribute('data-enlarging') !== 'true') {
-                  document.body.classList.remove('dg-scroll-lock');
-                }
-              }, 300);
+                document.body.classList.remove('dg-scroll-lock');
+                scrollLockedRef.current = false;
+              }, 200);
             });
           });
         });
       };
 
-      animatingOverlay.addEventListener('transitionend', cleanup, {
-        once: true
-      });
+      animatingOverlay.addEventListener('transitionend', cleanup, { once: true });
+      setTimeout(cleanup, enlargeTransitionMs + 150);
     };
 
     scrim.addEventListener('click', close);
@@ -627,6 +678,8 @@ export function DomeGallery({
 
     const rawSrc = parent.dataset.src || (el.querySelector('img') as HTMLImageElement)?.src || '';
     const rawAlt = parent.dataset.alt || (el.querySelector('img') as HTMLImageElement)?.alt || '';
+    const isVideo = parent.dataset.isVideo === 'true' || rawSrc.endsWith('.mp4') || rawSrc.endsWith('.webm');
+    const videoUrl = parent.dataset.videoUrl || (isVideo ? rawSrc : '');
 
     const isMobile = window.innerWidth < 768;
     const maxTargetW = Math.min(window.innerWidth * (isMobile ? 0.92 : 0.75), 640);
@@ -640,21 +693,39 @@ export function DomeGallery({
 
     const overlay = document.createElement('div');
     overlay.className = 'enlarge';
-    overlay.style.cssText = `position:absolute; left:${frameR.left - mainR.left}px; top:${frameR.top - mainR.top}px; width:${frameR.width}px; height:${frameR.height}px; opacity:0; z-index:30; will-change:transform,opacity; transform-origin:top left; transition:transform ${enlargeTransitionMs}ms cubic-bezier(0.16, 1, 0.3, 1), opacity ${enlargeTransitionMs}ms ease; border-radius:${openedImageBorderRadius}; overflow:hidden; box-shadow:0 25px 60px rgba(0,0,0,.85), 0 0 30px rgba(238,220,154,0.08); border: 1px solid rgba(255,255,255,0.15);`;
+    overlay.style.cssText = `position:absolute; left:${frameR.left - mainR.left}px; top:${frameR.top - mainR.top}px; width:${frameR.width}px; height:${frameR.height}px; opacity:0; z-index:30; will-change:transform,opacity; transform-origin:top left; transition:transform ${enlargeTransitionMs}ms cubic-bezier(0.16, 1, 0.3, 1), opacity ${enlargeTransitionMs}ms ease; border-radius:${openedImageBorderRadius}; overflow:hidden; box-shadow:0 25px 60px rgba(0,0,0,.85), 0 0 30px rgba(238,220,154,0.08); border: 1px solid rgba(255,255,255,0.15); background:#000; pointer-events:auto;`;
 
-    const img = document.createElement('img');
-    img.src = rawSrc;
-    img.alt = rawAlt;
-    img.style.cssText = `width:100%; height:100%; object-fit:cover; filter:${grayscale ? 'grayscale(1)' : 'none'};`;
-    overlay.appendChild(img);
+    ['pointerdown', 'pointerup', 'pointermove', 'mousedown', 'mouseup', 'mousemove', 'touchstart', 'touchend', 'touchmove', 'click', 'dblclick'].forEach(evt => {
+      overlay.addEventListener(evt, e => e.stopPropagation());
+    });
 
-    // Close button on top-right of enlarged image
+    if (isVideo) {
+      const videoEl = document.createElement('video');
+      videoEl.src = videoUrl || rawSrc;
+      videoEl.controls = true;
+      videoEl.autoplay = true;
+      videoEl.playsInline = true;
+      videoEl.preload = 'auto';
+      videoEl.style.cssText = 'width:100%; height:100%; object-fit:contain; background:#000; pointer-events:auto; position:relative; z-index:35;';
+      ['pointerdown', 'pointerup', 'pointermove', 'mousedown', 'mouseup', 'mousemove', 'touchstart', 'touchend', 'touchmove', 'click', 'dblclick', 'keydown', 'keyup'].forEach(evt => {
+        videoEl.addEventListener(evt, e => e.stopPropagation());
+      });
+      overlay.appendChild(videoEl);
+    } else {
+      const img = document.createElement('img');
+      img.src = rawSrc;
+      img.alt = rawAlt;
+      img.style.cssText = `width:100%; height:100%; object-fit:cover; filter:${grayscale ? 'grayscale(1)' : 'none'}; pointer-events:none;`;
+      overlay.appendChild(img);
+    }
+
+    // Close button on top-right of enlarged image/video
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.className = 'enlarge-close-btn';
-    closeBtn.setAttribute('aria-label', 'Fechar imagem');
+    closeBtn.setAttribute('aria-label', 'Fechar');
     closeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
-    closeBtn.style.cssText = `position:absolute; top:12px; right:12px; width:36px; height:36px; border-radius:9999px; background:rgba(30,30,36,0.85); color:#9ca3af; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.18); backdrop-filter:blur(12px); cursor:pointer; z-index:40; box-shadow:0 4px 16px rgba(0,0,0,0.5); transition:all 0.2s ease;`;
+    closeBtn.style.cssText = `position:absolute; top:12px; right:12px; width:36px; height:36px; border-radius:9999px; background:rgba(30,30,36,0.85); color:#9ca3af; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.18); backdrop-filter:blur(12px); cursor:pointer; z-index:40; box-shadow:0 4px 16px rgba(0,0,0,0.5); transition:all 0.2s ease; pointer-events:auto;`;
     closeBtn.onmouseenter = () => { closeBtn.style.background = 'rgba(50,50,60,0.95)'; closeBtn.style.color = '#ffffff'; closeBtn.style.borderColor = 'rgba(255,255,255,0.35)'; closeBtn.style.transform = 'scale(1.06)'; };
     closeBtn.onmouseleave = () => { closeBtn.style.background = 'rgba(30,30,36,0.85)'; closeBtn.style.color = '#9ca3af'; closeBtn.style.borderColor = 'rgba(255,255,255,0.18)'; closeBtn.style.transform = 'scale(1)'; };
     closeBtn.onclick = (e) => {
@@ -664,40 +735,34 @@ export function DomeGallery({
     };
     overlay.appendChild(closeBtn);
 
-    // Download Button (icon-only in gray tone) on top-right beside close button
+    // Download Button on top-right beside close button
     const dlBtn = document.createElement('button');
     dlBtn.type = 'button';
     dlBtn.className = 'enlarge-dl-btn';
-    dlBtn.setAttribute('aria-label', 'Baixar imagem');
+    dlBtn.setAttribute('aria-label', 'Baixar arquivo');
     dlBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>`;
-    dlBtn.style.cssText = `position:absolute; top:12px; right:54px; width:36px; height:36px; border-radius:9999px; background:rgba(30,30,36,0.85); color:#9ca3af; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.18); backdrop-filter:blur(12px); cursor:pointer; z-index:40; box-shadow:0 4px 16px rgba(0,0,0,0.5); transition:all 0.2s ease;`;
+    dlBtn.style.cssText = `position:absolute; top:12px; right:54px; width:36px; height:36px; border-radius:9999px; background:rgba(30,30,36,0.85); color:#9ca3af; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.18); backdrop-filter:blur(12px); cursor:pointer; z-index:40; box-shadow:0 4px 16px rgba(0,0,0,0.5); transition:all 0.2s ease; pointer-events:auto;`;
     dlBtn.onmouseenter = () => { dlBtn.style.background = 'rgba(50,50,60,0.95)'; dlBtn.style.color = '#ffffff'; dlBtn.style.borderColor = 'rgba(255,255,255,0.35)'; dlBtn.style.transform = 'scale(1.06)'; };
     dlBtn.onmouseleave = () => { dlBtn.style.background = 'rgba(30,30,36,0.85)'; dlBtn.style.color = '#9ca3af'; dlBtn.style.borderColor = 'rgba(255,255,255,0.18)'; dlBtn.style.transform = 'scale(1)'; };
     dlBtn.onclick = async (e) => {
       e.stopPropagation();
-      try {
-        const res = await fetch(rawSrc);
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const filename = (rawAlt || 'elite-nago-midia').replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase() + '.jpg';
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } catch {
-        const a = document.createElement('a');
-        a.href = rawSrc;
-        a.download = 'elite-nago-midia.jpg';
-        a.target = '_blank';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }
+      e.preventDefault();
+      const targetDownloadUrl = isVideo ? (videoUrl || rawSrc) : rawSrc;
+      const ext = isVideo ? 'mp4' : 'jpg';
+      const filename = (rawAlt || 'elite-nago-midia').replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase() + '.' + ext;
+      
+      dlBtn.style.color = '#34d399';
+      await triggerFileDownload(targetDownloadUrl, filename);
+      setTimeout(() => {
+        dlBtn.style.color = '#9ca3af';
+      }, 1500);
     };
     overlay.appendChild(dlBtn);
+
+    if (scrimRef.current) {
+      scrimRef.current.style.pointerEvents = 'auto';
+      scrimRef.current.style.opacity = '1';
+    }
 
     viewerRef.current!.appendChild(overlay);
     const tx0 = tileR.left - frameR.left;
@@ -865,6 +930,8 @@ export function DomeGallery({
                   className="sphere-item absolute m-auto"
                   data-src={it.src}
                   data-alt={it.alt}
+                  data-is-video={it.isVideo ? 'true' : 'false'}
+                  data-video-url={it.videoUrl || ''}
                   data-offset-x={it.x}
                   data-offset-y={it.y}
                   data-size-x={it.sizeX}
@@ -883,16 +950,20 @@ export function DomeGallery({
                   }
                 >
                   <div
-                    className="item__image absolute block overflow-hidden cursor-pointer transition-transform duration-300 shadow-2xl"
+                    className="item__image absolute block overflow-hidden cursor-pointer transition-transform duration-300 shadow-2xl group"
                     role="button"
                     tabIndex={0}
-                    aria-label={it.alt || 'Open image'}
+                    aria-label={it.alt || 'Open media'}
                     onClick={e => {
                       if (draggingRef.current) return;
                       if (movedRef.current) return;
                       if (performance.now() - lastDragEndAt.current < 80) return;
                       if (openingRef.current) return;
-                      openItemFromElement(e.currentTarget as HTMLElement);
+                      if (onItemClick && it.mediaData) {
+                        onItemClick(it.mediaData);
+                      } else {
+                        openItemFromElement(e.currentTarget as HTMLElement);
+                      }
                     }}
                     onPointerUp={e => {
                       if ((e.nativeEvent as PointerEvent).pointerType !== 'touch') return;
@@ -900,7 +971,11 @@ export function DomeGallery({
                       if (movedRef.current) return;
                       if (performance.now() - lastDragEndAt.current < 80) return;
                       if (openingRef.current) return;
-                      openItemFromElement(e.currentTarget as HTMLElement);
+                      if (onItemClick && it.mediaData) {
+                        onItemClick(it.mediaData);
+                      } else {
+                        openItemFromElement(e.currentTarget as HTMLElement);
+                      }
                     }}
                     style={{
                       inset: '10px',
@@ -909,16 +984,35 @@ export function DomeGallery({
                       backgroundColor: 'rgba(10, 10, 14, 0.6)'
                     }}
                   >
-                    <img
-                      src={it.src}
-                      draggable={false}
-                      alt={it.alt}
-                      className="w-full h-full object-cover pointer-events-none"
-                      style={{
-                        backfaceVisibility: 'hidden',
-                        filter: `var(--image-filter, ${grayscale ? 'grayscale(1)' : 'none'})`
-                      }}
-                    />
+                    {it.isVideo && (!it.src || it.src.endsWith('.mp4') || it.src.endsWith('.webm')) ? (
+                      <video
+                        src={`${it.videoUrl || it.src}#t=0.5`}
+                        className="w-full h-full object-cover pointer-events-none"
+                        muted
+                        playsInline
+                        preload="metadata"
+                      />
+                    ) : (
+                      <img
+                        src={it.src || 'https://i.imgur.com/A46hzMt.jpeg'}
+                        draggable={false}
+                        alt={it.alt}
+                        className="w-full h-full object-cover pointer-events-none"
+                        style={{
+                          backfaceVisibility: 'hidden',
+                          filter: `var(--image-filter, ${grayscale ? 'grayscale(1)' : 'none'})`
+                        }}
+                      />
+                    )}
+                    {it.isVideo && (
+                      <div className="absolute inset-0 bg-black/35 flex items-center justify-center pointer-events-none">
+                        <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/40 text-white flex items-center justify-center shadow-lg">
+                          <svg className="w-4 h-4 ml-0.5 text-white fill-current" viewBox="0 0 24 24">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                          </svg>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

@@ -28,7 +28,7 @@ export interface DatabaseNews {
 
 export interface DatabaseApproval {
   id: string;
-  type: 'music' | 'image';
+  type: 'music' | 'image' | 'video' | 'media';
   title: string;
   student_name: string;
   academy: string;
@@ -39,6 +39,9 @@ export interface DatabaseApproval {
   spotify_url?: string | null;
   description: string;
   status: 'pending' | 'approved' | 'rejected';
+  file_size?: string | null;
+  file_type?: string | null;
+  original_filename?: string | null;
   created_at?: string;
 }
 
@@ -57,13 +60,19 @@ export interface DatabaseContactRequest {
 export interface DatabaseMedia {
   id: string;
   title: string;
-  type: 'music' | 'media';
+  type: 'music' | 'media' | 'image' | 'video';
   author: string;
   category: string;
   description?: string;
   url: string;
   thumbnail_url?: string;
   spotify_url?: string | null;
+  status?: 'approved' | 'pending' | 'rejected';
+  file_size?: string | null;
+  file_type?: 'photo' | 'video' | 'audio' | string | null;
+  original_filename?: string | null;
+  downloads_count?: number;
+  is_featured?: boolean;
   created_at?: string;
 }
 
@@ -97,8 +106,15 @@ export interface DatabaseSponsor {
   created_at?: string;
 }
 
+export function formatFileSize(bytes: number): string {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
 
-export async function uploadToStorage(file: File, folder = 'uploads'): Promise<string | null> {
+export async function uploadToStorage(file: File, folder = 'uploads'): Promise<{ url: string; fileName: string; size: string } | null> {
   try {
     const ext = file.name.split('.').pop() || 'bin';
     const cleanFileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
@@ -118,10 +134,55 @@ export async function uploadToStorage(file: File, folder = 'uploads'): Promise<s
       .from('medias')
       .getPublicUrl(cleanFileName);
 
-    return publicUrlData.publicUrl;
+    return {
+      url: publicUrlData.publicUrl,
+      fileName: file.name,
+      size: formatFileSize(file.size),
+    };
   } catch (err) {
     console.warn('Storage upload error:', err);
     return null;
+  }
+}
+
+export async function triggerFileDownload(fileUrl: string, fileName?: string, mediaId?: string): Promise<boolean> {
+  try {
+    if (mediaId) {
+      // Increment downloads_count in background
+      supabase.rpc('increment_media_download', { media_id: mediaId }).then(({ error }) => {
+        if (error) {
+          // Fallback direct update
+          supabase.from('medias').select('downloads_count').eq('id', mediaId).single().then(({ data }) => {
+            const current = (data?.downloads_count || 0) + 1;
+            supabase.from('medias').update({ downloads_count: current }).eq('id', mediaId);
+          });
+        }
+      });
+    }
+
+    const response = await fetch(fileUrl, { mode: 'cors' });
+    if (!response.ok) throw new Error('Fetch failed');
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = fileName || fileUrl.split('/').pop() || 'elite-nago-arquivo';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+    return true;
+  } catch {
+    // Fallback: direct browser download link
+    const link = document.createElement('a');
+    link.href = fileUrl;
+    link.download = fileName || 'elite-nago-arquivo';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    return true;
   }
 }
 

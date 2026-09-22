@@ -37,11 +37,13 @@ import {
   HeartHandshake,
   Globe,
   Tag,
+  Video,
+  Download,
   Image as ImageIcon
 } from 'lucide-react';
 import { FileUpload } from '../ui/file-upload';
 import { CalendarDatePicker } from '../ui/calendar-date-picker';
-import { supabase, uploadToStorage, fetchSpotifyMetadata, DatabaseSponsor } from '../../lib/supabase';
+import { supabase, uploadToStorage, formatFileSize, triggerFileDownload, fetchSpotifyMetadata, DatabaseSponsor } from '../../lib/supabase';
 
 interface AdminDashboardProps {
   onBackToHome?: () => void;
@@ -49,7 +51,7 @@ interface AdminDashboardProps {
 
 interface StudentApproval {
   id: string;
-  type: 'music' | 'image';
+  type: 'music' | 'image' | 'video' | 'media';
   title: string;
   studentName: string;
   academy: string;
@@ -59,6 +61,9 @@ interface StudentApproval {
   imageUrl?: string;
   description: string;
   status: 'pending' | 'approved' | 'rejected';
+  file_size?: string | null;
+  original_filename?: string | null;
+  spotify_url?: string | null;
 }
 
 interface NewsItem {
@@ -362,10 +367,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
 
   // Direct Upload Form State
   const [editingMedia, setEditingMedia] = useState<any | null>(null);
-  const [directType, setDirectType] = useState<'music' | 'media'>('music');
+  const [directType, setDirectType] = useState<'music' | 'photo' | 'video' | 'media'>('photo');
   const [directTitle, setDirectTitle] = useState('');
   const [directAuthor, setDirectAuthor] = useState('');
-  const [directCategory, setDirectCategory] = useState('Toques & Cantigas');
+  const [directCategory, setDirectCategory] = useState('Batizados & Rodas');
   const [directDescription, setDirectDescription] = useState('');
   const [directSpotifyUrl, setDirectSpotifyUrl] = useState('');
   const [directAudioFiles, setDirectAudioFiles] = useState<File[]>([]);
@@ -757,6 +762,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
   };
 
   const handleApprove = async (id: string) => {
+    const itemToApprove = approvals.find(item => item.id === id);
     setApprovals(prev =>
       prev.map(item => (item.id === id ? { ...item, status: 'approved' as const } : item))
     );
@@ -765,10 +771,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
         .from('student_approvals')
         .update({ status: 'approved' })
         .eq('id', id);
-    } catch {
-      // Handled locally
+
+      if (itemToApprove) {
+        const isMusic = itemToApprove.type === 'music';
+        const isVideo = itemToApprove.type === 'video';
+        const fileType = isMusic ? 'audio' : (isVideo ? 'video' : 'photo');
+        const mediaPayload = {
+          title: itemToApprove.title,
+          type: isMusic ? 'music' : (isVideo ? 'video' : 'image'),
+          file_type: fileType,
+          file_size: itemToApprove.file_size || null,
+          original_filename: itemToApprove.original_filename || null,
+          author: itemToApprove.studentName ? `${itemToApprove.studentName} (${itemToApprove.academy})` : 'Aluno Elite Nagô',
+          category: isMusic ? 'Toques & Cantigas' : 'Batizados & Rodas',
+          description: itemToApprove.description || `Mídia aprovada do aluno ${itemToApprove.studentName}.`,
+          url: isMusic ? (itemToApprove.audioUrl || '') : (itemToApprove.imageUrl || ''),
+          thumbnail_url: itemToApprove.thumbnailUrl || (isMusic ? '/logos/en_thumb.png' : itemToApprove.imageUrl),
+          spotify_url: itemToApprove.spotify_url || null,
+          status: 'approved',
+          is_featured: true,
+        };
+
+        const { data: insertedMedia } = await supabase
+          .from('medias')
+          .insert([mediaPayload])
+          .select();
+
+        if (insertedMedia && insertedMedia.length > 0) {
+          setMediasList(prev => [insertedMedia[0], ...prev.filter(m => m.id !== insertedMedia[0].id)]);
+        }
+      }
+    } catch (err) {
+      console.warn('Erro ao aprovar submissão no Supabase:', err);
     }
-    showToast('Submissão do aluno aprovada e sincronizada no Supabase!');
+    showToast('Submissão do aluno aprovada e publicada na galeria!');
   };
 
   const handleReject = async (id: string) => {
@@ -805,10 +841,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
     if (e) e.stopPropagation();
     setActiveTab('direct_upload');
     setEditingMedia(item);
-    setDirectType(item.type === 'media' ? 'media' : 'music');
+    const itemType = item.file_type === 'video' || item.type === 'video'
+      ? 'video'
+      : (item.type === 'music' || item.file_type === 'audio' ? 'music' : 'photo');
+    setDirectType(itemType);
     setDirectTitle(item.title || '');
     setDirectAuthor(item.author || 'Elite Nagô');
-    setDirectCategory(item.category || 'Toques & Cantigas');
+    setDirectCategory(item.category || 'Batizados & Rodas');
     setDirectDescription(item.description || '');
     setDirectSpotifyUrl(item.spotify_url || '');
     setDirectAudioFiles([]);
@@ -829,7 +868,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
     setEditingMedia(null);
     setDirectTitle('');
     setDirectAuthor('');
-    setDirectCategory('Toques & Cantigas');
+    setDirectCategory('Batizados & Rodas');
     setDirectDescription('');
     setDirectSpotifyUrl('');
     setDirectAudioFiles([]);
@@ -851,7 +890,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
         }
         showToast(`Capa e informações identificadas do Spotify: "${meta.title || 'Música'}"`);
       }
-    } catch {}
+    } catch { }
   };
 
   const handleDeleteMedia = async (id: string, title?: string) => {
@@ -881,64 +920,73 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
     const cleanSpotify = directSpotifyUrl.trim();
     const hasAudio = directAudioFiles.length > 0;
     const hasSpotify = cleanSpotify.length > 0;
+    const hasMediaFiles = directMediaFiles.length > 0;
     const existingUrl = editingMedia?.url;
 
-    // Condition: If spotify link is present or already has existing media audio URL, MP3 is optional.
     if (directType === 'music' && !hasAudio && !hasSpotify && !existingUrl) {
-      showToast('Para músicas, informe ao menos o link do Spotify ou selecione um arquivo MP3.');
+      showToast('Para músicas, informe o link do Spotify ou selecione um arquivo de áudio MP3.');
       return;
     }
-    if (directType === 'media' && directMediaFiles.length === 0 && !existingUrl) {
-      showToast('Por favor, selecione ao menos uma foto ou vídeo.');
+    if ((directType === 'photo' || directType === 'video' || directType === 'media') && !hasMediaFiles && !existingUrl) {
+      showToast(`Por favor, selecione ao menos um arquivo de ${directType === 'video' ? 'vídeo' : 'imagem'}.`);
       return;
     }
 
     setDirectLoading(true);
 
-    let audioUrl = editingMedia?.url || '';
-    if (hasAudio) {
-      const uploaded = await uploadToStorage(directAudioFiles[0], 'audio');
-      audioUrl = uploaded || URL.createObjectURL(directAudioFiles[0]);
-    } else if (!editingMedia && !hasSpotify) {
-      audioUrl = 'https://cdn.freesound.org/previews/518/518884_10672049-lq.mp3';
-    }
-
-    // Determine thumbnail:
-    // 1. Newly uploaded thumbnail file
-    // 2. Existing thumbnail if valid
-    // 3. Cover automatically fetched from Spotify oEmbed
-    // 4. Official EN Brand Logo (/logos/en_thumb.png)
-    let thumbnailUrl = editingMedia?.thumbnail_url;
-    if (directThumbnailFiles.length > 0) {
-      const uploaded = await uploadToStorage(directThumbnailFiles[0], 'thumbnails');
-      thumbnailUrl = uploaded || URL.createObjectURL(directThumbnailFiles[0]);
-    } else if ((!thumbnailUrl || thumbnailUrl === 'https://i.imgur.com/A46hzMt.jpeg') && hasSpotify) {
-      const spotifyMeta = await fetchSpotifyMetadata(cleanSpotify);
-      if (spotifyMeta?.thumbnail_url) {
-        thumbnailUrl = spotifyMeta.thumbnail_url;
-      }
-    }
-
-    if (!thumbnailUrl || thumbnailUrl === 'https://i.imgur.com/A46hzMt.jpeg') {
-      thumbnailUrl = '/logos/en_thumb.png';
-    }
-
-    let mediaUrl = editingMedia?.url || undefined;
-    if (directMediaFiles.length > 0) {
-      const uploaded = await uploadToStorage(directMediaFiles[0], 'gallery');
-      mediaUrl = uploaded || URL.createObjectURL(directMediaFiles[0]);
-    }
-
+    // MODE 1: EDITING EXISTING MEDIA
     if (editingMedia) {
+      let audioUrl = editingMedia.url || '';
+      let fileSize = editingMedia.file_size || null;
+      let origFileName = editingMedia.original_filename || null;
+
+      if (hasAudio) {
+        const uploaded = await uploadToStorage(directAudioFiles[0], 'audio');
+        if (uploaded) {
+          audioUrl = uploaded.url;
+          fileSize = uploaded.size;
+          origFileName = uploaded.fileName;
+        }
+      }
+
+      let thumbnailUrl = editingMedia.thumbnail_url;
+      if (directThumbnailFiles.length > 0) {
+        const uploaded = await uploadToStorage(directThumbnailFiles[0], 'thumbnails');
+        if (uploaded) thumbnailUrl = uploaded.url;
+      } else if ((!thumbnailUrl || thumbnailUrl === 'https://i.imgur.com/A46hzMt.jpeg') && hasSpotify) {
+        const spotifyMeta = await fetchSpotifyMetadata(cleanSpotify);
+        if (spotifyMeta?.thumbnail_url) thumbnailUrl = spotifyMeta.thumbnail_url;
+      }
+
+      if (!thumbnailUrl || thumbnailUrl === 'https://i.imgur.com/A46hzMt.jpeg') {
+        thumbnailUrl = '/logos/en_thumb.png';
+      }
+
+      let mediaUrl = editingMedia.url;
+      if (hasMediaFiles) {
+        const folder = directType === 'video' ? 'videos' : 'gallery';
+        const uploaded = await uploadToStorage(directMediaFiles[0], folder);
+        if (uploaded) {
+          mediaUrl = uploaded.url;
+          fileSize = uploaded.size;
+          origFileName = uploaded.fileName;
+        }
+      }
+
+      const fileType = directType === 'music' ? 'audio' : (directType === 'video' ? 'video' : 'photo');
       const updatePayload = {
         title: directTitle.trim(),
-        type: directType,
+        type: directType === 'music' ? 'music' : (directType === 'video' ? 'video' : 'image'),
+        file_type: fileType,
+        file_size: fileSize,
+        original_filename: origFileName,
         author: directAuthor.trim() || 'Elite Nagô',
         category: directCategory,
         description: directDescription.trim(),
         url: directType === 'music' ? (audioUrl || '') : (mediaUrl || '/logos/en_thumb.png'),
         thumbnail_url: thumbnailUrl,
         spotify_url: hasSpotify ? cleanSpotify : null,
+        status: 'approved',
       };
 
       try {
@@ -951,7 +999,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
           console.error('Erro ao atualizar mídia no Supabase:', error);
           showToast(`Aviso: Atualizado localmente (${error.message})`);
         } else {
-          showToast(`Mídia "${directTitle}" atualizada no Supabase com sucesso!`);
+          showToast(`Mídia "${directTitle}" atualizada com sucesso!`);
         }
       } catch {
         showToast(`Mídia "${directTitle}" atualizada localmente.`);
@@ -966,44 +1014,143 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
       return;
     }
 
-    const payload = {
-      title: directTitle.trim(),
-      type: directType,
-      author: directAuthor.trim() || 'Elite Nagô',
-      category: directCategory,
-      description: directDescription.trim(),
-      url: directType === 'music' ? (audioUrl || '') : (mediaUrl || '/logos/en_thumb.png'),
-      thumbnail_url: thumbnailUrl,
-      is_featured: true,
-      spotify_url: hasSpotify ? cleanSpotify : null,
-    };
+    // MODE 2: CREATING NEW MEDIA (MUSIC)
+    if (directType === 'music') {
+      let audioUrl = '';
+      let fileSize = null;
+      let origFileName = null;
 
-    try {
-      const { data: insertedData, error } = await supabase
-        .from('medias')
-        .insert([payload])
-        .select();
-
-      if (error) {
-        console.error('Erro ao cadastrar mídia no Supabase:', error);
-        showToast(`Aviso: Publicado localmente (${error.message})`);
-        setMediasList(prev => [{ ...payload, id: `local-${Date.now()}` }, ...prev]);
-      } else {
-        if (insertedData && insertedData.length > 0) {
-          setMediasList(prev => [insertedData[0], ...prev]);
+      if (hasAudio) {
+        const uploaded = await uploadToStorage(directAudioFiles[0], 'audio');
+        if (uploaded) {
+          audioUrl = uploaded.url;
+          fileSize = uploaded.size;
+          origFileName = uploaded.fileName;
+        } else {
+          audioUrl = URL.createObjectURL(directAudioFiles[0]);
+          fileSize = formatFileSize(directAudioFiles[0].size);
+          origFileName = directAudioFiles[0].name;
         }
-        showToast(`Mídia "${directTitle}" sincronizada no Supabase com sucesso!`);
+      } else if (!hasSpotify) {
+        audioUrl = 'https://cdn.freesound.org/previews/518/518884_10672049-lq.mp3';
       }
-    } catch {
-      setMediasList(prev => [{ ...payload, id: `local-${Date.now()}` }, ...prev]);
-      showToast(`Mídia "${directTitle}" adicionada localmente.`);
+
+      let thumbnailUrl = '';
+      if (directThumbnailFiles.length > 0) {
+        const uploaded = await uploadToStorage(directThumbnailFiles[0], 'thumbnails');
+        thumbnailUrl = uploaded?.url || URL.createObjectURL(directThumbnailFiles[0]);
+      } else if (hasSpotify) {
+        const spotifyMeta = await fetchSpotifyMetadata(cleanSpotify);
+        if (spotifyMeta?.thumbnail_url) {
+          thumbnailUrl = spotifyMeta.thumbnail_url;
+        }
+      }
+
+      if (!thumbnailUrl || thumbnailUrl === 'https://i.imgur.com/A46hzMt.jpeg') {
+        thumbnailUrl = '/logos/en_thumb.png';
+      }
+
+      const payload = {
+        title: directTitle.trim(),
+        type: 'music',
+        file_type: 'audio',
+        file_size: fileSize,
+        original_filename: origFileName,
+        author: directAuthor.trim() || 'Elite Nagô',
+        category: directCategory,
+        description: directDescription.trim(),
+        url: audioUrl,
+        thumbnail_url: thumbnailUrl,
+        status: 'approved',
+        is_featured: true,
+        spotify_url: hasSpotify ? cleanSpotify : null,
+      };
+
+      try {
+        const { data: insertedData, error } = await supabase
+          .from('medias')
+          .insert([payload])
+          .select();
+
+        if (error) {
+          console.error('Erro ao cadastrar música no Supabase:', error);
+          showToast(`Aviso: Publicado localmente (${error.message})`);
+          setMediasList(prev => [{ ...payload, id: `local-${Date.now()}` }, ...prev]);
+        } else {
+          if (insertedData && insertedData.length > 0) {
+            setMediasList(prev => [insertedData[0], ...prev]);
+          }
+          showToast(`Música "${directTitle}" cadastrada e sincronizada com download direto!`);
+        }
+      } catch {
+        setMediasList(prev => [{ ...payload, id: `local-${Date.now()}` }, ...prev]);
+        showToast(`Música "${directTitle}" adicionada localmente.`);
+      }
+    } else {
+      // MODE 3: PHOTOS OR VIDEOS (SUPPORTS MULTIPLE BATCH UPLOADS)
+      const folder = directType === 'video' ? 'videos' : 'gallery';
+      const isVideo = directType === 'video';
+      const itemsToInsert: any[] = [];
+
+      for (let i = 0; i < directMediaFiles.length; i++) {
+        const file = directMediaFiles[i];
+        const isFileVideo = isVideo || file.type.startsWith('video');
+        const uploaded = await uploadToStorage(file, folder);
+        const fileUrl = uploaded?.url || URL.createObjectURL(file);
+        const fileSize = uploaded?.size || formatFileSize(file.size);
+        const origFileName = uploaded?.fileName || file.name;
+
+        const suffix = directMediaFiles.length > 1 ? ` (${i + 1})` : '';
+        const mediaTitle = directMediaFiles.length > 1 && !directTitle.trim()
+          ? file.name.replace(/\.[^/.]+$/, '')
+          : `${directTitle.trim()}${suffix}`;
+
+        const payload = {
+          title: mediaTitle,
+          type: isFileVideo ? 'video' : 'image',
+          file_type: isFileVideo ? 'video' : 'photo',
+          file_size: fileSize,
+          original_filename: origFileName,
+          author: directAuthor.trim() || 'Elite Nagô',
+          category: directCategory,
+          description: directDescription.trim() || (isFileVideo ? 'Vídeo Oficial do Grupo Elite Nagô' : 'Foto Oficial da Galeria Elite Nagô'),
+          url: fileUrl,
+          thumbnail_url: isFileVideo ? '/logos/en_thumb.png' : fileUrl,
+          status: 'approved',
+          is_featured: true,
+          spotify_url: null,
+        };
+
+        itemsToInsert.push(payload);
+      }
+
+      try {
+        const { data: insertedData, error } = await supabase
+          .from('medias')
+          .insert(itemsToInsert)
+          .select();
+
+        if (error) {
+          console.error('Erro ao cadastrar mídias no Supabase:', error);
+          showToast(`Aviso: Salvo localmente (${error.message})`);
+          setMediasList(prev => [...itemsToInsert.map((item, idx) => ({ ...item, id: `local-${Date.now()}-${idx}` })), ...prev]);
+        } else {
+          if (insertedData && insertedData.length > 0) {
+            setMediasList(prev => [...insertedData, ...prev]);
+          }
+          showToast(`${itemsToInsert.length} mídia(s) enviada(s) e publicadas com download direto!`);
+        }
+      } catch {
+        setMediasList(prev => [...itemsToInsert.map((item, idx) => ({ ...item, id: `local-${Date.now()}-${idx}` })), ...prev]);
+        showToast('Mídias adicionadas localmente.');
+      }
     }
 
     setDirectLoading(false);
     setDirectTitle('');
     setDirectAuthor('');
     setDirectSpotifyUrl('');
-    setDirectCategory('Toques & Cantigas');
+    setDirectCategory('Batizados & Rodas');
     setDirectDescription('');
     setDirectAudioFiles([]);
     setDirectThumbnailFiles([]);
@@ -1052,7 +1199,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
     let coverUrl = editingNews?.image || 'https://i.imgur.com/A46hzMt.jpeg';
     if (newsCoverFiles.length > 0) {
       const uploaded = await uploadToStorage(newsCoverFiles[0], 'news');
-      coverUrl = uploaded || URL.createObjectURL(newsCoverFiles[0]);
+      coverUrl = uploaded?.url || URL.createObjectURL(newsCoverFiles[0]);
     }
 
     const cleanTag = newsTag.trim().toUpperCase() || 'EVENTOS & CERIMÔNIAS';
@@ -1230,9 +1377,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
 
     if (sponsorLogoFiles.length > 0) {
       try {
-        const uploadedUrl = await uploadToStorage(sponsorLogoFiles[0], 'sponsors');
-        if (uploadedUrl) {
-          finalLogoUrl = uploadedUrl;
+        const uploaded = await uploadToStorage(sponsorLogoFiles[0], 'sponsors');
+        if (uploaded?.url) {
+          finalLogoUrl = uploaded.url;
         } else {
           finalLogoUrl = URL.createObjectURL(sponsorLogoFiles[0]);
         }
@@ -2438,45 +2585,69 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
             </div>
 
             <form onSubmit={handleDirectSubmit} className="space-y-4">
-              <div className="flex gap-3 mb-2">
+              <div className="flex gap-2.5 mb-2 flex-wrap">
                 <button
                   type="button"
-                  onClick={() => setDirectType('music')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${directType === 'music'
+                  onClick={() => {
+                    setDirectType('photo');
+                    setDirectCategory('Batizados & Rodas');
+                  }}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${directType === 'photo' || directType === 'media'
                     ? 'bg-amber-400 text-black shadow-md'
                     : 'bg-white/5 text-neutral-400 hover:text-white'
                     }`}
                 >
-                  Música / Áudio MP3
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  Foto / Galeria
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDirectType('media')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${directType === 'media'
+                  onClick={() => {
+                    setDirectType('video');
+                    setDirectCategory('Batizados & Rodas');
+                  }}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${directType === 'video'
                     ? 'bg-amber-400 text-black shadow-md'
                     : 'bg-white/5 text-neutral-400 hover:text-white'
                     }`}
                 >
-                  Foto / Galeria
+                  <Video className="w-3.5 h-3.5" />
+                  Vídeo (MP4, WEBM)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDirectType('music');
+                    setDirectCategory('Toques & Cantigas');
+                  }}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${directType === 'music'
+                    ? 'bg-amber-400 text-black shadow-md'
+                    : 'bg-white/5 text-neutral-400 hover:text-white'
+                    }`}
+                >
+                  <Music className="w-3.5 h-3.5" />
+                  Música / Áudio MP3
                 </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="text-xs font-semibold text-neutral-300 block mb-1">Título</label>
+                  <label className="text-xs font-semibold text-neutral-300 block mb-1">
+                    {directType === 'music' ? 'Título da Música' : (directType === 'video' ? 'Título do Vídeo' : 'Título da(s) Foto(s)')}
+                  </label>
                   <input
                     type="text"
-                    placeholder="Ex: Toque de São Bento Grande"
+                    placeholder={directType === 'music' ? 'Ex: Toque de São Bento Grande' : 'Ex: Batizado & Troca de Cordas 2026'}
                     value={directTitle}
                     onChange={(e) => setDirectTitle(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-neutral-300 block mb-1">Autor</label>
+                  <label className="text-xs font-semibold text-neutral-300 block mb-1">Autor / Responsável</label>
                   <input
                     type="text"
-                    placeholder="Ex: Mestre Pinheiro"
+                    placeholder="Ex: Mestre Pinheiro ou Contramestre Soldado"
                     value={directAuthor}
                     onChange={(e) => setDirectAuthor(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl bg-black/50 border border-white/10 text-xs text-white"
@@ -2489,9 +2660,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                     onChange={(e) => setDirectCategory(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl bg-[#14141e] border border-white/10 text-xs text-white"
                   >
-                    <option value="Toques & Cantigas">Toques & Cantigas</option>
-                    <option value="Aulas e Treinos">Aulas e Treinos</option>
                     <option value="Batizados & Rodas">Batizados & Rodas</option>
+                    <option value="Aulas e Treinos">Aulas e Treinos</option>
+                    <option value="Toques & Cantigas">Toques & Cantigas</option>
                     <option value="Histórico & Tradição">Histórico & Tradição</option>
                   </select>
                 </div>
@@ -2547,12 +2718,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-semibold text-neutral-300 block mb-1">
-                      1. Arquivo de Áudio MP3 {directSpotifyUrl.trim() ? '(Opcional — Link Spotify informado)' : '(Obrigatório sem link Spotify)'}
+                      1. Arquivo de Áudio MP3 / WAV {directSpotifyUrl.trim() ? '(Opcional — Link Spotify informado)' : '(Obrigatório sem link Spotify)'}
                     </label>
                     <FileUpload
-                      accept="audio/*,.mp3,.wav"
+                      accept="audio/*,.mp3,.wav,.ogg"
                       maxFiles={1}
-                      label="Selecione o arquivo MP3 aqui"
+                      label="Selecione o arquivo de áudio aqui"
                       onChange={(files) => setDirectAudioFiles(files)}
                     />
                   </div>
@@ -2568,15 +2739,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                     />
                   </div>
                 </div>
+              ) : directType === 'video' ? (
+                <div>
+                  <label className="text-xs font-semibold text-neutral-300 block mb-1">
+                    Arquivos de Vídeo (MP4, WEBM, MOV)
+                  </label>
+                  <FileUpload
+                    accept="video/*,.mp4,.webm,.mov"
+                    maxFiles={5}
+                    label="Selecione os vídeos aqui (Upload Direto)"
+                    onChange={(files) => setDirectMediaFiles(files)}
+                  />
+                </div>
               ) : (
                 <div>
                   <label className="text-xs font-semibold text-neutral-300 block mb-1">
-                    Fotos / Imagens da Galeria
+                    Fotos / Imagens da Galeria (Permite múltiplos arquivos)
                   </label>
                   <FileUpload
                     accept="image/*"
-                    maxFiles={5}
-                    label="Selecione as imagens aqui"
+                    maxFiles={10}
+                    label="Selecione as imagens aqui (Upload Direto com Download Liberado)"
                     onChange={(files) => setDirectMediaFiles(files)}
                   />
                 </div>
@@ -2589,8 +2772,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-black font-bold text-xs shadow-lg transition-all cursor-pointer disabled:opacity-50"
                 >
                   {directLoading
-                    ? 'Salvando...'
-                    : (editingMedia ? 'Salvar Alterações na Música' : 'Publicar Diretamente no Site')}
+                    ? 'Salvando no Supabase...'
+                    : (editingMedia ? 'Salvar Alterações na Mídia' : 'Publicar Diretamente no Site')}
                 </button>
               </div>
             </form>
@@ -2615,106 +2798,130 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1">
-                  {mediasList.map((item) => (
-                    <div
-                      key={item.id}
-                      className="p-3.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 transition-all flex items-start gap-3.5 group"
-                    >
-                      <div className="w-12 h-12 rounded-xl bg-neutral-900 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center relative">
-                        {item.thumbnail_url ? (
-                          <img
-                            src={item.thumbnail_url}
-                            alt={item.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <Music className="w-5 h-5 text-neutral-500" />
-                        )}
-                        {item.type === 'music' && item.url && (
-                          <button
-                            type="button"
-                            onClick={() => handleToggleAudio(item.id, item.url)}
-                            className="absolute inset-0 bg-black/60 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                          >
-                            {playingAudioId === item.id ? (
-                              <Pause className="w-4 h-4 text-amber-400" />
-                            ) : (
-                              <Play className="w-4 h-4 text-emerald-400" />
-                            )}
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                            item.type === 'music'
-                              ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30'
-                              : 'bg-teal-400/20 text-teal-300 border border-teal-400/30'
-                          }`}>
-                            {item.type === 'music' ? 'Música' : 'Galeria'}
-                          </span>
-                          <span className="text-[10px] text-neutral-400 truncate">
-                            {item.category || 'Geral'}
-                          </span>
-                        </div>
-
-                        <h5 className="text-xs font-bold text-white truncate">{item.title}</h5>
-                        <p className="text-[11px] text-neutral-400 truncate">{item.author || 'Elite Nagô'}</p>
-
-                        {/* Badges / Links */}
-                        <div className="flex items-center gap-2 mt-2 flex-wrap">
-                          {item.spotify_url && (
-                            <a
-                              href={item.spotify_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[11px] font-bold text-[#1DB954] hover:text-[#1ed760] flex items-center gap-1 bg-[#1DB954]/10 hover:bg-[#1DB954]/20 px-2 py-0.5 rounded-lg border border-[#1DB954]/30 transition-all"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              Spotify
-                            </a>
+                  {mediasList.map((item) => {
+                    const isItemVideo = item.file_type === 'video' || item.type === 'video';
+                    const isItemMusic = item.type === 'music' || item.file_type === 'audio';
+                    return (
+                      <div
+                        key={item.id}
+                        className="p-3.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 transition-all flex items-start gap-3.5 group"
+                      >
+                        <div className="w-14 h-14 rounded-xl bg-neutral-900 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center relative">
+                          {isItemVideo ? (
+                            <div className="w-full h-full bg-neutral-800 flex items-center justify-center relative">
+                              <Video className="w-6 h-6 text-indigo-400" />
+                            </div>
+                          ) : item.thumbnail_url || item.url ? (
+                            <img
+                              src={item.thumbnail_url || item.url}
+                              alt={item.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Music className="w-5 h-5 text-neutral-500" />
                           )}
-                          {item.url && item.type === 'music' && (
+                          {isItemMusic && item.url && (
                             <button
                               type="button"
                               onClick={() => handleToggleAudio(item.id, item.url)}
-                              className="text-[11px] font-semibold text-neutral-300 hover:text-white flex items-center gap-1 bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded-lg border border-white/10 transition-all cursor-pointer"
+                              className="absolute inset-0 bg-black/60 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                             >
                               {playingAudioId === item.id ? (
-                                <>
-                                  <Pause className="w-3 h-3 text-amber-400" /> Pausar
-                                </>
+                                <Pause className="w-4 h-4 text-amber-400" />
                               ) : (
-                                <>
-                                  <Play className="w-3 h-3 text-emerald-400" /> Ouvir MP3
-                                </>
+                                <Play className="w-4 h-4 text-emerald-400" />
                               )}
                             </button>
                           )}
                         </div>
-                      </div>
 
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleStartEditMedia(item)}
-                          title="Editar esta mídia"
-                          className="p-2 rounded-xl text-neutral-400 hover:text-amber-400 hover:bg-amber-500/10 transition-all cursor-pointer opacity-80 group-hover:opacity-100"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteMedia(item.id, item.title)}
-                          title="Deletar mídia do banco"
-                          className="p-2 rounded-xl text-neutral-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer opacity-80 group-hover:opacity-100"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${isItemMusic
+                              ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30'
+                              : isItemVideo
+                                ? 'bg-indigo-400/20 text-indigo-300 border border-indigo-400/30'
+                                : 'bg-teal-400/20 text-teal-300 border border-teal-400/30'
+                              }`}>
+                              {isItemMusic ? 'Música' : isItemVideo ? 'Vídeo' : 'Foto'}
+                            </span>
+                            <span className="text-[10px] text-neutral-400 truncate">
+                              {item.category || 'Geral'}
+                            </span>
+                            {item.file_size && (
+                              <span className="text-[10px] text-neutral-400 bg-white/5 px-1.5 py-0.2 rounded border border-white/5">
+                                {item.file_size}
+                              </span>
+                            )}
+                          </div>
+
+                          <h5 className="text-xs font-bold text-white truncate">{item.title}</h5>
+                          <p className="text-[11px] text-neutral-400 truncate">{item.author || 'Elite Nagô'}</p>
+
+                          {/* Badges / Links / Download Button */}
+                          <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            {item.spotify_url && (
+                              <a
+                                href={item.spotify_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[11px] font-bold text-[#1DB954] hover:text-[#1ed760] flex items-center gap-1 bg-[#1DB954]/10 hover:bg-[#1DB954]/20 px-2 py-0.5 rounded-lg border border-[#1DB954]/30 transition-all"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                Spotify
+                              </a>
+                            )}
+                            {item.url && isItemMusic && (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleAudio(item.id, item.url)}
+                                className="text-[11px] font-semibold text-neutral-300 hover:text-white flex items-center gap-1 bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded-lg border border-white/10 transition-all cursor-pointer"
+                              >
+                                {playingAudioId === item.id ? (
+                                  <>
+                                    <Pause className="w-3 h-3 text-amber-400" /> Pausar
+                                  </>
+                                ) : (
+                                  <>
+                                    <Play className="w-3 h-3 text-emerald-400" /> Ouvir MP3
+                                  </>
+                                )}
+                              </button>
+                            )}
+                            {item.url && (
+                              <button
+                                type="button"
+                                onClick={() => triggerFileDownload(item.url, item.original_filename || `${item.title.replace(/[^a-zA-Z0-9_-]/g, '_')}.${isItemMusic ? 'mp3' : isItemVideo ? 'mp4' : 'jpg'}`, item.id)}
+                                className="text-[11px] font-semibold text-emerald-300 hover:text-emerald-200 flex items-center gap-1 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-0.5 rounded-lg border border-emerald-500/30 transition-all cursor-pointer"
+                                title="Baixar arquivo original"
+                              >
+                                <Download className="w-3 h-3" /> Baixar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditMedia(item)}
+                            title="Editar esta mídia"
+                            className="p-2 rounded-xl text-neutral-400 hover:text-amber-400 hover:bg-amber-500/10 transition-all cursor-pointer opacity-80 group-hover:opacity-100"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMedia(item.id, item.title)}
+                            title="Deletar mídia do banco"
+                            className="p-2 rounded-xl text-neutral-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer opacity-80 group-hover:opacity-100"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -3200,11 +3407,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                   return (
                     <div
                       key={sponsor.id}
-                      className={`p-4 rounded-3xl bg-[#0e0e14]/90 border transition-all flex flex-col justify-between space-y-3 ${
-                        isBeingEdited
+                      className={`p-4 rounded-3xl bg-[#0e0e14]/90 border transition-all flex flex-col justify-between space-y-3 ${isBeingEdited
                           ? 'border-pink-500/60 bg-pink-950/20 shadow-xl shadow-pink-500/10'
                           : 'border-white/10 hover:border-white/20'
-                      }`}
+                        }`}
                     >
                       <div>
                         {/* Header Badge */}
@@ -3261,11 +3467,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBackToHome }) 
                         <button
                           type="button"
                           onClick={(e) => handleStartEditSponsor(sponsor, e)}
-                          className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold ${
-                            isBeingEdited
+                          className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold ${isBeingEdited
                               ? 'bg-pink-500 text-white border-pink-500'
                               : 'bg-pink-500/10 hover:bg-pink-500/20 text-pink-300 border-pink-500/30'
-                          }`}
+                            }`}
                           title="Editar apoiador"
                         >
                           <Pencil className="w-3.5 h-3.5" />
